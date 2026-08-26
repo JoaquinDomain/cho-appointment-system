@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash } from 'lucide-react'
+import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Appointment, HEALTH_FACILITIES } from '@/lib/types'
 import QRScanner from './QRScanner'
@@ -37,6 +37,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAppointments()
   }, [fetchAppointments])
+
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]
+    return {
+      total: appointments.length,
+      today: appointments.filter(apt => apt.appointment_date === today).length,
+      yakap: appointments.filter(apt => apt.yakap_registered).length
+    }
+  }, [appointments])
 
   const filteredAppointments = useMemo(() => {
     let filtered = appointments
@@ -156,11 +165,48 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={() => setShowScanner(!showScanner)}
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all hover:shadow-md hover:shadow-blue-300/50 font-medium"
           >
             <Scan className="w-5 h-5 mr-2" />
             {showScanner ? 'Close Scanner' : 'Scan QR Code'}
           </button>
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-300/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-xs sm:text-sm font-medium">Total Appointments</p>
+                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.total}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-600 to-indigo-500 text-white shadow-lg shadow-violet-300/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-violet-100 text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
+                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.today}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                <CalendarCheck className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-300/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-emerald-100 text-xs sm:text-sm font-medium">YAKAP Registered</p>
+                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.yakap}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                <HeartHandshake className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* QR Scanner */}

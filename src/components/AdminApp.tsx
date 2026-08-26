@@ -69,11 +69,14 @@ export default function AdminApp() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full">
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/25 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-dot-grid opacity-40" />
+        <div className="relative bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full border border-white/20 animate-fade-up">
           <div className="text-center mb-6">
-            <div className="mx-auto w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center mb-4">
-              <ShieldCheck className="w-7 h-7 text-indigo-600" />
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-400/40">
+              <ShieldCheck className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">CHO Admin Portal</h1>
             <p className="text-gray-500 text-sm">Laboratory Appointment Management</p>
@@ -112,7 +115,7 @@ export default function AdminApp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+              className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all hover:shadow-lg hover:shadow-indigo-400/40 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed font-semibold"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
@@ -131,15 +134,15 @@ export default function AdminApp() {
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-300/50">
+              <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-gray-900">CHO Admin Portal</h1>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowPoster(!showPoster)}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-700 transition-colors"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all hover:shadow-md hover:shadow-indigo-300/50"
             >
               {showPoster ? <LayoutDashboard className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
               {showPoster ? 'Dashboard' : 'QR Poster'}
