@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { X, Camera } from 'lucide-react'
+import type { Html5Qrcode } from 'html5-qrcode'
 
 interface QRScannerProps {
   onScan: (result: string) => void
@@ -12,7 +13,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState('')
   const scannerRef = useRef<HTMLDivElement>(null)
-  const html5QrCodeRef = useRef<any>(null)
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -38,7 +39,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
               stopScanner()
             }
           },
-          (errorMessage: string) => {
+          () => {
             // Ignore scan errors, they're normal during scanning
           }
         )
@@ -55,7 +56,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
     }
 
     const stopScanner = async () => {
-      if (html5QrCodeRef.current && isScanning) {
+      if (html5QrCodeRef.current?.isScanning) {
         try {
           await html5QrCodeRef.current.stop()
           html5QrCodeRef.current.clear()
@@ -114,7 +115,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       </div>
 
       <div className="mt-4 text-center text-sm text-gray-600">
-        <p>Point the camera at a patient's QR code</p>
+        <p>Point the camera at a patient&apos;s QR code</p>
       </div>
     </div>
   )
