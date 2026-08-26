@@ -1,14 +1,13 @@
 export interface Appointment {
   id: string
-  full_name: string
+  patient_name: string
   age: number
-  health_facility: string
-  yakap_registered: 'YES' | 'NO'
+  consultation_facility: string
+  yakap_registered: boolean
   yakap_facility?: string
   selected_tests: string[]
   appointment_date: string
   created_at: string
-  qr_code_id: string
 }
 
 export const HEALTH_FACILITIES = [

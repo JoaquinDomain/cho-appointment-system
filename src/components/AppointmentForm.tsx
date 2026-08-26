@@ -10,7 +10,7 @@ interface FormData {
   fullName: string
   age: string
   healthFacility: string
-  yakapRegistered: 'YES' | 'NO'
+  yakapRegistered: boolean
   yakapFacility: string
   selectedTests: string[]
   appointmentDate: string
@@ -21,7 +21,7 @@ export default function AppointmentForm() {
     fullName: '',
     age: '',
     healthFacility: '',
-    yakapRegistered: 'NO',
+    yakapRegistered: false,
     yakapFacility: '',
     selectedTests: [],
     appointmentDate: ''
@@ -39,19 +39,19 @@ export default function AppointmentForm() {
 
     try {
       const { data, error } = await supabase.from('appointments').insert({
-        full_name: formData.fullName,
+        patient_name: formData.fullName,
         age: parseInt(formData.age),
-        health_facility: formData.healthFacility,
+        consultation_facility: formData.healthFacility,
         yakap_registered: formData.yakapRegistered,
-        yakap_facility: formData.yakapRegistered === 'YES' ? formData.yakapFacility : null,
+        yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
         selected_tests: formData.selectedTests,
         appointment_date: formData.appointmentDate
       }).select()
 
       if (error) throw error
 
-      // Use the actual qr_code_id from the database
-      const actualQrId = data?.[0]?.qr_code_id || `APT-${Date.now()}`
+      // Use the appointment ID as QR code identifier
+      const actualQrId = data?.[0]?.id || `APT-${Date.now()}`
       setQrCodeId(actualQrId)
       setSubmitSuccess(true)
     } catch (error) {
@@ -98,7 +98,7 @@ export default function AppointmentForm() {
                 fullName: '',
                 age: '',
                 healthFacility: '',
-                yakapRegistered: 'NO',
+                yakapRegistered: false,
                 yakapFacility: '',
                 selectedTests: [],
                 appointmentDate: ''
@@ -196,9 +196,8 @@ export default function AppointmentForm() {
               <input
                 type="radio"
                 name="yakapRegistered"
-                value="NO"
-                checked={formData.yakapRegistered === 'NO'}
-                onChange={(e) => setFormData({ ...formData, yakapRegistered: e.target.value as 'YES' | 'NO' })}
+                checked={!formData.yakapRegistered}
+                onChange={() => setFormData({ ...formData, yakapRegistered: false })}
                 className="mr-2"
               />
               <span>No</span>
@@ -207,16 +206,15 @@ export default function AppointmentForm() {
               <input
                 type="radio"
                 name="yakapRegistered"
-                value="YES"
-                checked={formData.yakapRegistered === 'YES'}
-                onChange={(e) => setFormData({ ...formData, yakapRegistered: e.target.value as 'YES' | 'NO' })}
+                checked={formData.yakapRegistered}
+                onChange={() => setFormData({ ...formData, yakapRegistered: true })}
                 className="mr-2"
               />
               <span>Yes</span>
             </label>
           </div>
 
-          {formData.yakapRegistered === 'NO' && (
+          {!formData.yakapRegistered && (
             <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
                 <AlertCircle className="inline w-4 h-4 mr-1" />
@@ -225,7 +223,7 @@ export default function AppointmentForm() {
             </div>
           )}
 
-          {formData.yakapRegistered === 'YES' && (
+          {formData.yakapRegistered && (
             <div className="mt-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">YAKAP Facility</label>
               <select

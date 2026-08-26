@@ -47,12 +47,12 @@ export default function AdminDashboard() {
 
     if (searchTerm) {
       filtered = filtered.filter(apt =>
-        apt.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+        apt.patient_name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
     if (facilityFilter) {
-      filtered = filtered.filter(apt => apt.health_facility === facilityFilter)
+      filtered = filtered.filter(apt => apt.consultation_facility === facilityFilter)
     }
 
     setFilteredAppointments(filtered)
@@ -62,10 +62,10 @@ export default function AdminDashboard() {
     setScannedResult(result)
     setShowScanner(false)
     
-    // Find the appointment by QR code ID
-    const found = appointments.find(apt => apt.qr_code_id === result)
+    // Find the appointment by ID
+    const found = appointments.find(apt => apt.id === result)
     if (found) {
-      setSearchTerm(found.full_name)
+      setSearchTerm(found.patient_name)
     } else {
       alert('Appointment not found with this QR code')
     }
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
                     Booked
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    QR ID
+                    Appointment ID
                   </th>
                 </tr>
               </thead>
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                   filteredAppointments.map((appointment) => (
                     <tr key={appointment.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{appointment.full_name}</div>
+                        <div className="text-sm font-medium text-gray-900">{appointment.patient_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">{appointment.age}</div>
@@ -231,15 +231,15 @@ export default function AdminDashboard() {
                         <div className="text-sm text-gray-900">{formatDate(appointment.appointment_date)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.health_facility}</div>
+                        <div className="text-sm text-gray-500">{appointment.consultation_facility}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          appointment.yakap_registered === 'YES' 
+                          appointment.yakap_registered 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {appointment.yakap_registered}
+                          {appointment.yakap_registered ? 'YES' : 'NO'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -251,7 +251,7 @@ export default function AdminDashboard() {
                         <div className="text-sm text-gray-500">{formatDateTime(appointment.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-gray-900">{appointment.qr_code_id}</div>
+                        <div className="text-sm font-mono text-gray-900">{appointment.id}</div>
                       </td>
                     </tr>
                   ))
