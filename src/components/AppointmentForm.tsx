@@ -38,7 +38,12 @@ export default function AppointmentForm() {
     setSubmitError('')
 
     try {
-      const { data, error } = await supabase.from('appointments').insert({
+      // Generate the ID client-side: RLS allows anon inserts but not selects,
+      // so PostgREST cannot return the row after inserting it.
+      const appointmentId = crypto.randomUUID()
+
+      const { error } = await supabase.from('appointments').insert({
+        id: appointmentId,
         patient_name: formData.fullName,
         age: parseInt(formData.age),
         consultation_facility: formData.healthFacility,
@@ -46,13 +51,11 @@ export default function AppointmentForm() {
         yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
         selected_tests: formData.selectedTests,
         appointment_date: formData.appointmentDate
-      }).select()
+      })
 
       if (error) throw error
 
-      // Use the appointment ID as QR code identifier
-      const actualQrId = data?.[0]?.id || `APT-${Date.now()}`
-      setQrCodeId(actualQrId)
+      setQrCodeId(appointmentId)
       setSubmitSuccess(true)
     } catch (error) {
       console.error('Error submitting appointment:', error)
