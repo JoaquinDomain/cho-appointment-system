@@ -16,10 +16,10 @@ interface FormData {
   appointmentDate: string
 }
 
-function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
+function SectionHeading({ icon, title, tone }: { icon: React.ReactNode; title: string; tone: string }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+    <div className="flex items-center gap-2.5 mb-3">
+      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${tone} text-white flex items-center justify-center shadow-md`}>
         {icon}
       </div>
       <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">{title}</h2>
@@ -91,16 +91,16 @@ export default function AppointmentForm() {
 
   if (submitSuccess) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-blue-100">
+      <div className="bg-white rounded-3xl shadow-2xl shadow-blue-200/50 p-6 sm:p-8 border border-blue-100 animate-fade-up">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-300/50">
+            <CheckCircle className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Appointment Confirmed!</h2>
           <p className="text-gray-600 mb-4">
             Please proceed to CHO Lab on your date of choice at 8:00 AM.
           </p>
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-4">
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 p-4 rounded-2xl mb-4">
             <p className="text-sm text-gray-600 mb-2">Your Appointment ID:</p>
             <p className="text-sm sm:text-lg font-mono font-bold text-gray-900 break-all">{qrCodeId}</p>
           </div>
@@ -119,7 +119,7 @@ export default function AppointmentForm() {
               })
               setQrCodeId('')
             }}
-            className="mt-6 w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+            className="mt-6 w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all hover:shadow-lg hover:shadow-blue-300/50 font-semibold"
           >
             Book Another Appointment
           </button>
@@ -129,8 +129,9 @@ export default function AppointmentForm() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-8 border border-blue-100">
-      <div className="mb-6">
+    <div className="bg-white/90 backdrop-blur rounded-3xl shadow-2xl shadow-blue-200/50 p-4 sm:p-8 border border-blue-100 overflow-hidden relative">
+      <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600" />
+      <div className="mb-6 pt-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Book a Laboratory Appointment</h1>
         <p className="text-gray-500 text-sm sm:text-base">Fill out the form below to schedule your laboratory appointment.</p>
       </div>
@@ -138,7 +139,7 @@ export default function AppointmentForm() {
       <form onSubmit={handleSubmit} className="space-y-7">
         {/* Patient Information */}
         <section>
-          <SectionHeading icon={<User className="w-4 h-4" />} title="Patient Information" />
+          <SectionHeading icon={<User className="w-4 h-4" />} title="Patient Information" tone="from-blue-500 to-cyan-500" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
@@ -169,7 +170,7 @@ export default function AppointmentForm() {
 
         {/* Appointment Date */}
         <section>
-          <SectionHeading icon={<Calendar className="w-4 h-4" />} title="Appointment Date" />
+          <SectionHeading icon={<Calendar className="w-4 h-4" />} title="Appointment Date" tone="from-violet-500 to-purple-500" />
           <input
             type="date"
             required
@@ -182,7 +183,7 @@ export default function AppointmentForm() {
 
         {/* Health Facility */}
         <section>
-          <SectionHeading icon={<MapPin className="w-4 h-4" />} title="Health Facility Where Consulted" />
+          <SectionHeading icon={<MapPin className="w-4 h-4" />} title="Health Facility Where Consulted" tone="from-emerald-500 to-teal-500" />
           <select
             required
             value={formData.healthFacility}
@@ -198,7 +199,7 @@ export default function AppointmentForm() {
 
         {/* YAKAP Registration */}
         <section>
-          <SectionHeading icon={<HeartHandshake className="w-4 h-4" />} title="YAKAP Registration Status" />
+          <SectionHeading icon={<HeartHandshake className="w-4 h-4" />} title="YAKAP Registration Status" tone="from-rose-500 to-pink-500" />
           <div className="grid grid-cols-2 gap-3">
             <label
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors font-medium ${
@@ -263,17 +264,17 @@ export default function AppointmentForm() {
 
         {/* Laboratory Tests */}
         <section>
-          <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" />
+          <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {LABORATORY_TESTS.map(test => {
               const checked = formData.selectedTests.includes(test)
               return (
                 <label
                   key={test}
-                  className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                  className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                     checked
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-sm shadow-blue-200'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
                   }`}
                 >
                   <input
@@ -310,7 +311,7 @@ export default function AppointmentForm() {
         <button
           type="submit"
           disabled={isSubmitting || formData.selectedTests.length === 0}
-          className="w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed font-semibold text-base shadow-lg shadow-blue-600/20"
+          className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white rounded-2xl hover:from-blue-700 hover:via-blue-600 hover:to-cyan-600 transition-all hover:shadow-xl hover:shadow-blue-400/40 hover:-translate-y-0.5 disabled:from-gray-400 disabled:via-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-semibold text-base shadow-lg shadow-blue-600/25"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Appointment'}
         </button>
@@ -332,8 +333,10 @@ function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white p-4 rounded-2xl shadow-md border-2 border-blue-600">
-        <QRCodeCanvas value={qrCodeId} size={200} level="H" />
+      <div className="p-1 rounded-3xl bg-gradient-to-br from-blue-600 via-cyan-500 to-blue-600 shadow-lg shadow-blue-300/50">
+        <div className="bg-white p-4 rounded-[1.35rem]">
+          <QRCodeCanvas value={qrCodeId} size={200} level="H" />
+        </div>
       </div>
       <p className="text-sm text-gray-600 mt-2">Show this QR code at the laboratory</p>
       <button
