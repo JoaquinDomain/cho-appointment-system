@@ -74,8 +74,7 @@ export default function AdminApp() {
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
         <div className="absolute inset-0 bg-dot-grid opacity-40" />
         <div className="relative bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full border border-white/20 animate-fade-up">
-          <div className="absolute top-0 inset-x-0 h-1.5 rounded-t-3xl bg-gradient-to-r from-indigo-600 via-violet-500 to-cyan-500" />
-          <div className="text-center mb-6 pt-2">
+          <div className="text-center mb-6">
             <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-400/40">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
