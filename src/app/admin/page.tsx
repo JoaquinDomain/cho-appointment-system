@@ -34,9 +34,9 @@ export default function AdminPage() {
       if (data.user) {
         setIsAuthenticated(true)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error)
-      setError(error.message || 'Failed to login. Please check your credentials.')
+      setError(error instanceof Error ? error.message : 'Failed to login. Please check your credentials.')
     } finally {
       setLoading(false)
     }

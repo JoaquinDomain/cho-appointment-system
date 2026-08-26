@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Filter, Calendar, User, MapPin, Clock, Scan } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Appointment, HEALTH_FACILITIES } from '@/lib/types'
@@ -8,41 +8,33 @@ import QRScanner from './QRScanner'
 
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [facilityFilter, setFacilityFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
-  const [scannedResult, setScannedResult] = useState('')
 
-  useEffect(() => {
-    fetchAppointments()
+  const fetchAppointments = useCallback(() => {
+    supabase
+      .from('appointments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching appointments:', error)
+          setError('Failed to load appointments. Please check your authentication.')
+        } else {
+          setAppointments(data || [])
+        }
+        setLoading(false)
+      })
   }, [])
 
   useEffect(() => {
-    filterAppointments()
-  }, [appointments, searchTerm, facilityFilter])
+    fetchAppointments()
+  }, [fetchAppointments])
 
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setAppointments(data || [])
-    } catch (error) {
-      console.error('Error fetching appointments:', error)
-      setError('Failed to load appointments. Please check your authentication.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterAppointments = () => {
+  const filteredAppointments = useMemo(() => {
     let filtered = appointments
 
     if (searchTerm) {
@@ -55,13 +47,12 @@ export default function AdminDashboard() {
       filtered = filtered.filter(apt => apt.consultation_facility === facilityFilter)
     }
 
-    setFilteredAppointments(filtered)
-  }
+    return filtered
+  }, [appointments, searchTerm, facilityFilter])
 
   const handleScanResult = (result: string) => {
-    setScannedResult(result)
     setShowScanner(false)
-    
+
     // Find the appointment by ID
     const found = appointments.find(apt => apt.id === result)
     if (found) {
@@ -106,7 +97,11 @@ export default function AdminDashboard() {
         <div className="text-center p-6 bg-red-50 rounded-lg">
           <p className="text-red-800">{error}</p>
           <button
-            onClick={fetchAppointments}
+            onClick={() => {
+              setLoading(true)
+              setError('')
+              fetchAppointments()
+            }}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
             Retry

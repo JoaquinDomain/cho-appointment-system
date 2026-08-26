@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Calendar, User, MapPin, AlertCircle, CheckCircle, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { HEALTH_FACILITIES, LABORATORY_TESTS, FASTING_REQUIRED_TESTS } from '@/lib/types'
-import QRCode from 'qrcode.react'
+import { QRCodeCanvas } from 'qrcode.react'
 
 interface FormData {
   fullName: string
@@ -72,7 +72,7 @@ export default function AppointmentForm() {
   }
 
   const requiresFasting = formData.selectedTests.some(test =>
-    FASTING_REQUIRED_TESTS.includes(test as any)
+    (FASTING_REQUIRED_TESTS as readonly string[]).includes(test)
   )
 
   if (submitSuccess) {
@@ -303,7 +303,7 @@ function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
   return (
     <div className="flex flex-col items-center">
       <div className="bg-white p-4 rounded-lg shadow-md border-2 border-blue-600">
-        <QRCode value={qrCodeId} size={200} level="H" />
+        <QRCodeCanvas value={qrCodeId} size={200} level="H" />
       </div>
       <p className="text-sm text-gray-600 mt-2">Show this QR code at the laboratory</p>
       <button

@@ -1,11 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import QRCode from 'qrcode.react'
+import { useSyncExternalStore } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { Download, Printer } from 'lucide-react'
 
 export default function SiteQRPoster() {
-  const [siteUrl] = useState('https://cho-lab-appointment.vercel.app')
+  const siteUrl = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ''
+  )
 
   const handleDownload = () => {
     const canvas = document.querySelector('canvas') as HTMLCanvasElement
@@ -37,7 +41,7 @@ export default function SiteQRPoster() {
 
         <div className="flex justify-center mb-6">
           <div className="bg-white p-4 rounded-lg shadow-md border-2 border-blue-600">
-            <QRCode value={siteUrl} size={256} level="H" />
+            {siteUrl && <QRCodeCanvas value={siteUrl} size={256} level="H" />}
           </div>
         </div>
 
