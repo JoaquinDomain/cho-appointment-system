@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                 placeholder="Search by patient name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="relative">
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
               <select
                 value={facilityFilter}
                 onChange={(e) => setFacilityFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
               >
                 <option value="">All Facilities</option>
                 {HEALTH_FACILITIES.map(facility => (

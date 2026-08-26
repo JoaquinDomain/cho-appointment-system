@@ -147,7 +147,7 @@ export default function AppointmentForm() {
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter your full name"
               />
             </div>
@@ -160,7 +160,7 @@ export default function AppointmentForm() {
                 max="120"
                 value={formData.age}
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter your age"
               />
             </div>
@@ -176,7 +176,7 @@ export default function AppointmentForm() {
             min={new Date().toISOString().split('T')[0]}
             value={formData.appointmentDate}
             onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </section>
 
@@ -187,7 +187,7 @@ export default function AppointmentForm() {
             required
             value={formData.healthFacility}
             onChange={(e) => setFormData({ ...formData, healthFacility: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Select a health facility</option>
             {HEALTH_FACILITIES.map(facility => (
@@ -250,7 +250,7 @@ export default function AppointmentForm() {
                 required
                 value={formData.yakapFacility}
                 onChange={(e) => setFormData({ ...formData, yakapFacility: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select YAKAP facility</option>
                 {HEALTH_FACILITIES.map(facility => (
