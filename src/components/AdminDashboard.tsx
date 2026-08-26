@@ -112,23 +112,21 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600">CHO Laboratory Appointment Management</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-500 text-sm sm:text-base">CHO Laboratory Appointment Management</p>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowScanner(!showScanner)}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Scan className="w-5 h-5 mr-2" />
-              {showScanner ? 'Close Scanner' : 'Scan QR Code'}
-            </button>
-          </div>
+          <button
+            onClick={() => setShowScanner(!showScanner)}
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Scan className="w-5 h-5 mr-2" />
+            {showScanner ? 'Close Scanner' : 'Scan QR Code'}
+          </button>
         </div>
 
         {/* QR Scanner */}
@@ -139,7 +137,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -148,7 +146,7 @@ export default function AdminDashboard() {
                 placeholder="Search by patient name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="relative">
@@ -156,7 +154,7 @@ export default function AdminDashboard() {
               <select
                 value={facilityFilter}
                 onChange={(e) => setFacilityFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
               >
                 <option value="">All Facilities</option>
                 {HEALTH_FACILITIES.map(facility => (
@@ -170,8 +168,60 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Appointments Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Appointments: cards on mobile */}
+        <div className="space-y-3 md:hidden">
+          {filteredAppointments.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow p-8 text-center text-gray-500">
+              No appointments found matching your criteria
+            </div>
+          ) : (
+            filteredAppointments.map((appointment) => (
+              <div key={appointment.id} className="bg-white rounded-2xl shadow p-4">
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <div>
+                    <p className="font-semibold text-gray-900">{appointment.patient_name}</p>
+                    <p className="text-sm text-gray-500">Age {appointment.age}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    appointment.yakap_registered
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    YAKAP {appointment.yakap_registered ? 'YES' : 'NO'}
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-sm text-gray-600">
+                  <p className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {formatDate(appointment.appointment_date)}
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    {appointment.consultation_facility}
+                  </p>
+                  <p className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    Booked {formatDateTime(appointment.created_at)}
+                  </p>
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">Tests</p>
+                  <div className="flex flex-wrap gap-1">
+                    {appointment.selected_tests.map(test => (
+                      <span key={test} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                        {test}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs font-mono text-gray-400 break-all">{appointment.id}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Appointments Table (desktop) */}
+        <div className="hidden md:block bg-white rounded-2xl shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
