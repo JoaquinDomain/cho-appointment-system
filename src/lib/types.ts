@@ -42,7 +42,9 @@ export const LABORATORY_TESTS = [
   'Uric Acid',
   'Lipid Profile',
   'FBS',
-  'OGTT'
+  'OGTT'  
+  'Chest Xray'  
+  'Papsmear'
 ] as const
 
 export const FASTING_REQUIRED_TESTS = [
