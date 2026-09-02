@@ -161,6 +161,8 @@ cho-appointment-system/
 - Lipid Profile
 - FBS
 - OGTT
+- Chest X-Ray
+- Pap Smear
 
 ## Health Facilities
 
