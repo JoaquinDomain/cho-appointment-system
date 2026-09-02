@@ -25,30 +25,28 @@ export const HEALTH_FACILITIES = [
   'Others'
 ] as const
 
-export const LABORATORY_TESTS = [
-  'Panel (CBC, Platelet, Lipid Profile, FBS, Creatinine, Uric Acid)',
-  'Blood Typing',
-  'CBC / Platelet Count',
-  'Fecal Occult Blood',
-  'Stool Exam',
-  'Urinalysis',
-  'Dengue NS1 / Dengue Duo',
-  'HBsAg',
-  'Pregnancy Test',
-  'Syphilis',
-  'SGPT / SGOT',
-  'BUN',
-  'Creatinine',
-  'Uric Acid',
-  'Lipid Profile',
-  'FBS',
-  'OGTT',
-  'Chest X-Ray',
-  'Pap Smear'
-] as const
+export const TEST_CONFIG = {
+  cbc: { label: 'CBC / Chest X-Ray', limit: 100, requiresFasting: false },
+  fbs: { label: 'Glucose (FBS)', limit: 50, requiresFasting: true },
+  ogtt: { label: 'OGTT', limit: 1, requiresFasting: true },
+  lipid_profile: { label: 'Lipid Profile', limit: 50, requiresFasting: true },
+  creatinine: { label: 'Creatinine (CREA)', limit: 50, requiresFasting: false },
+  uric_acid: { label: 'Uric Acid (URIC)', limit: 50, requiresFasting: false },
+  bun: { label: 'BUN', limit: 50, requiresFasting: false },
+  urinalysis: { label: 'Urinalysis', limit: 100, requiresFasting: false },
+  stool_exam: { label: 'Stool Exam (S/E)', limit: 30, requiresFasting: false },
+  hbsag: { label: 'HBsAg', limit: 50, requiresFasting: false },
+  syphilis: { label: 'Syphilis', limit: 50, requiresFasting: false },
+  hiv: { label: 'HIV Test', limit: 50, requiresFasting: false },
+  pregnancy: { label: 'Pregnancy Test', limit: 50, requiresFasting: false },
+  gram_staining: { label: 'Gram Staining', limit: 50, requiresFasting: false },
+  pap_smear: { label: 'Pap Smear', limit: 10, requiresFasting: false }
+} as const
 
-export const FASTING_REQUIRED_TESTS = [
-  'Panel (CBC, Platelet, Lipid Profile, FBS, Creatinine, Uric Acid)',
-  'FBS',
-  'Lipid Profile'
-] as const
+export type TestKey = keyof typeof TEST_CONFIG
+
+export const LABORATORY_TESTS = Object.values(TEST_CONFIG).map(t => t.label)
+
+export const FASTING_REQUIRED_TESTS = Object.values(TEST_CONFIG)
+  .filter(t => t.requiresFasting)
+  .map(t => t.label)

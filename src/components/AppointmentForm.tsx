@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Calendar, User, MapPin, AlertCircle, CheckCircle, Download, FlaskConical, HeartHandshake } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { HEALTH_FACILITIES, LABORATORY_TESTS, FASTING_REQUIRED_TESTS } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 
 interface FormData {
@@ -38,10 +37,68 @@ export default function AppointmentForm() {
     appointmentDate: ''
   })
 
+  const [testCounts, setTestCounts] = useState<Record<string, number>>({})
+  const [loadingQuotas, setLoadingQuotas] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [qrCodeId, setQrCodeId] = useState('')
+
+  useEffect(() => {
+    let ignore = false
+    const date = formData.appointmentDate
+
+    if (!date) {
+      queueMicrotask(() => {
+        if (!ignore) setTestCounts({})
+      })
+      return
+    }
+
+    async function loadQuotas() {
+      setLoadingQuotas(true)
+      try {
+        const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (!ignore) {
+            const newCounts: Record<string, number> = data.counts || {}
+            setTestCounts(newCounts)
+
+            // Deselect any tests that are fully booked for the chosen date
+            const testConfigs = Object.values(TEST_CONFIG)
+            setFormData(prev => {
+              const validSelectedTests = prev.selectedTests.filter(testLabel => {
+                const config = testConfigs.find(t => t.label === testLabel)
+                if (!config) return true
+                const count = newCounts[testLabel] || 0
+                return count < config.limit
+              })
+
+              if (validSelectedTests.length !== prev.selectedTests.length) {
+                return { ...prev, selectedTests: validSelectedTests }
+              }
+              return prev
+            })
+          }
+        } else {
+          console.error('Failed to fetch quota counts')
+        }
+      } catch (err) {
+        console.error('Error fetching quotas:', err)
+      } finally {
+        if (!ignore) {
+          setLoadingQuotas(false)
+        }
+      }
+    }
+
+    loadQuotas()
+
+    return () => {
+      ignore = true
+    }
+  }, [formData.appointmentDate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,28 +106,40 @@ export default function AppointmentForm() {
     setSubmitError('')
 
     try {
-      // Generate the ID client-side: RLS allows anon inserts but not selects,
-      // so PostgREST cannot return the row after inserting it.
       const appointmentId = crypto.randomUUID()
 
-      const { error } = await supabase.from('appointments').insert({
-        id: appointmentId,
-        patient_name: formData.fullName,
-        age: parseInt(formData.age),
-        consultation_facility: formData.healthFacility,
-        yakap_registered: formData.yakapRegistered,
-        yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
-        selected_tests: formData.selectedTests,
-        appointment_date: formData.appointmentDate
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: appointmentId,
+          patient_name: formData.fullName,
+          age: formData.age,
+          consultation_facility: formData.healthFacility,
+          yakap_registered: formData.yakapRegistered,
+          yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
+          selected_tests: formData.selectedTests,
+          appointment_date: formData.appointmentDate
+        })
       })
 
-      if (error) throw error
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit appointment. Please try again.')
+      }
 
       setQrCodeId(appointmentId)
       setSubmitSuccess(true)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting appointment:', error)
-      setSubmitError('Failed to submit appointment. Please try again.')
+      if (error instanceof Error) {
+        setSubmitError(error.message)
+      } else {
+        setSubmitError('Failed to submit appointment. Please try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -127,6 +196,8 @@ export default function AppointmentForm() {
       </div>
     )
   }
+
+  const testConfigs = Object.values(TEST_CONFIG)
 
   return (
     <div className="bg-white/90 backdrop-blur rounded-3xl shadow-2xl shadow-blue-200/50 p-4 sm:p-8 border border-blue-100">
@@ -264,25 +335,57 @@ export default function AppointmentForm() {
         {/* Laboratory Tests */}
         <section>
           <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
+          {!formData.appointmentDate && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl mb-3">
+              Please select an appointment date above to see test availability.
+            </p>
+          )}
+          {loadingQuotas && (
+            <p className="text-xs text-blue-600 mb-3 animate-pulse">Checking test availability for selected date...</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {LABORATORY_TESTS.map(test => {
+            {testConfigs.map(config => {
+              const test = config.label
+              const limit = config.limit
+              const bookedCount = testCounts[test] || 0
+              const isFullyBooked = Boolean(formData.appointmentDate) && bookedCount >= limit
               const checked = formData.selectedTests.includes(test)
+
               return (
                 <label
                   key={test}
-                  className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    checked
-                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-sm shadow-blue-200'
-                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                  className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                    isFullyBooked
+                      ? 'border-gray-200 bg-gray-100/80 cursor-not-allowed opacity-75'
+                      : checked
+                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-sm shadow-blue-200 cursor-pointer'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => handleTestToggle(test)}
-                    className="mt-0.5 w-4 h-4 accent-blue-600"
-                  />
-                  <span className={`text-sm ${checked ? 'text-blue-900 font-medium' : 'text-gray-700'}`}>{test}</span>
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isFullyBooked}
+                      onChange={() => handleTestToggle(test)}
+                      className="mt-0.5 w-4 h-4 accent-blue-600 disabled:cursor-not-allowed"
+                    />
+                    <div className="flex flex-col">
+                      <span className={`text-sm ${isFullyBooked ? 'text-gray-400 line-through' : checked ? 'text-blue-900 font-medium' : 'text-gray-700'}`}>
+                        {test}
+                      </span>
+                      {formData.appointmentDate && (
+                        <span className="text-[11px] text-gray-400 font-normal">
+                          {bookedCount} / {limit} booked
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isFullyBooked && (
+                    <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
+                      Fully Booked
+                    </span>
+                  )}
                 </label>
               )
             })}
