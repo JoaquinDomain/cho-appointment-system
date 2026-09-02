@@ -335,11 +335,6 @@ export default function AppointmentForm() {
         {/* Laboratory Tests */}
         <section>
           <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
-          {!formData.appointmentDate && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-xl mb-3">
-              Please select an appointment date above to see test availability.
-            </p>
-          )}
           {loadingQuotas && (
             <p className="text-xs text-blue-600 mb-3 animate-pulse">Checking test availability for selected date...</p>
           )}
@@ -374,11 +369,11 @@ export default function AppointmentForm() {
                       <span className={`text-sm ${isFullyBooked ? 'text-gray-400 line-through' : checked ? 'text-blue-900 font-medium' : 'text-gray-700'}`}>
                         {test}
                       </span>
-                      {formData.appointmentDate && (
-                        <span className="text-[11px] text-gray-400 font-normal">
-                          {bookedCount} / {limit} booked
-                        </span>
-                      )}
+                      <span className="text-[11px] text-gray-500 font-normal">
+                        {formData.appointmentDate
+                          ? `${bookedCount} / ${limit} booked`
+                          : `Daily Limit: ${limit}`}
+                      </span>
                     </div>
                   </div>
                   {isFullyBooked && (

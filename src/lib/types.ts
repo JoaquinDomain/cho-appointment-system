@@ -26,7 +26,8 @@ export const HEALTH_FACILITIES = [
 ] as const
 
 export const TEST_CONFIG = {
-  cbc: { label: 'CBC / Chest X-Ray', limit: 100, requiresFasting: false },
+  cbc: { label: 'CBC', limit: 100, requiresFasting: false },
+  chest_xray: { label: 'Chest X-Ray', limit: 100, requiresFasting: false },
   fbs: { label: 'Glucose (FBS)', limit: 50, requiresFasting: true },
   ogtt: { label: 'OGTT', limit: 1, requiresFasting: true },
   lipid_profile: { label: 'Lipid Profile', limit: 50, requiresFasting: true },
