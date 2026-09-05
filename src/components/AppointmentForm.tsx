@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Calendar, User, MapPin, AlertCircle, CheckCircle, Download, FlaskConical, HeartHandshake } from 'lucide-react'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
@@ -106,40 +106,36 @@ export default function AppointmentForm() {
     setSubmitError('')
 
     try {
-      const appointmentId = crypto.randomUUID()
-
+      // Secure path: validated + quota-checked + rate-limited server API
+      // generates the UUID. No direct Supabase write, no client-made ID.
       const res = await fetch('/api/appointments', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: appointmentId,
-          patient_name: formData.fullName,
+          patient_name: formData.fullName.trim(),
           age: formData.age,
           consultation_facility: formData.healthFacility,
           yakap_registered: formData.yakapRegistered,
           yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
           selected_tests: formData.selectedTests,
-          appointment_date: formData.appointmentDate
-        })
+          appointment_date: formData.appointmentDate,
+        }),
       })
-
-      const data = await res.json()
-
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit appointment. Please try again.')
+        const details = Array.isArray((json as { details?: string[] }).details)
+          ? `: ${(json as { details: string[] }).details.slice(0, 2).join(' ')}`
+          : ''
+        throw new Error(`${(json as { error?: string }).error ?? 'Submit failed'}${details}`)
       }
-
-      setQrCodeId(appointmentId)
+      // Server-generated UUID (never trust a client-made ID).
+      setQrCodeId((json as { id: string }).id)
       setSubmitSuccess(true)
     } catch (error: unknown) {
       console.error('Error submitting appointment:', error)
-      if (error instanceof Error) {
-        setSubmitError(error.message)
-      } else {
-        setSubmitError('Failed to submit appointment. Please try again.')
-      }
+      setSubmitError(
+        error instanceof Error ? error.message : 'Failed to submit appointment. Please try again.'
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -418,8 +414,9 @@ export default function AppointmentForm() {
 }
 
 function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
+  const wrapRef = useRef<HTMLDivElement>(null)
   const handleDownload = () => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement
+    const canvas = wrapRef.current?.querySelector('canvas') as HTMLCanvasElement | undefined
     if (canvas) {
       const link = document.createElement('a')
       link.download = `appointment-qr-${qrCodeId}.png`
@@ -431,7 +428,7 @@ function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
   return (
     <div className="flex flex-col items-center">
       <div className="p-1 rounded-3xl bg-gradient-to-br from-blue-600 via-cyan-500 to-blue-600 shadow-lg shadow-blue-300/50">
-        <div className="bg-white p-4 rounded-[1.35rem]">
+        <div ref={wrapRef} className="bg-white p-4 rounded-[1.35rem]">
           <QRCodeCanvas value={qrCodeId} size={200} level="H" />
         </div>
       </div>

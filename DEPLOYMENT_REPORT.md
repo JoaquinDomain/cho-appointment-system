@@ -31,9 +31,9 @@ All existing files were inspected and updated to match the new database schema s
 ## Step 2: Database Provisioning (Supabase) ⚠️
 
 ### Supabase Configuration
-- **Project URL**: https://jsqkubtjdfxjmveckgof.supabase.co
+- **Project URL**: configured via `NEXT_PUBLIC_SUPABASE_URL` (see `.env.example`; never hardcode)
 - **Status**: Project exists and is accessible
-- **Environment Variables**: Configured in `.env.local`
+- **Environment Variables**: Configured in `.env.local` (untracked)
 
 ### Migration Status
 - **SQL Script**: Updated and ready in `supabase-setup.sql`
@@ -77,9 +77,11 @@ CREATE POLICY "Allow authenticated admin read" ON appointments FOR SELECT USING 
 
 ### Deployment Readiness
 - **Build Configuration**: Next.js auto-detected
-- **Environment Variables**: 
-  - `NEXT_PUBLIC_SUPABASE_URL`: https://jsqkubtjdfxjmveckgof.supabase.co
-  - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Configured
+- **Environment Variables** (set in Vercel, never in docs):
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+  - `ADMIN_EMAILS`
 - **Vercel Config**: Created `vercel.json` with project name
 
 ## Manual Steps Required
@@ -95,7 +97,7 @@ CREATE POLICY "Allow authenticated admin read" ON appointments FOR SELECT USING 
 ### 2. Apply Database Migration
 ```bash
 # Manual action required:
-# 1. Go to https://supabase.com/dashboard/project/jsqkubtjdfxjmveckgof
+# 1. Go to your Supabase project > SQL Editor
 # 2. Navigate to SQL Editor
 # 3. Run the contents of supabase-setup.sql
 ```
@@ -106,8 +108,10 @@ CREATE POLICY "Allow authenticated admin read" ON appointments FOR SELECT USING 
 # 1. Go to https://vercel.com
 # 2. Import GitHub repository
 # 3. Add environment variables:
-#    - NEXT_PUBLIC_SUPABASE_URL=https://jsqkubtjdfxjmveckgof.supabase.co
-#    - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_anon_key
+#    - NEXT_PUBLIC_SUPABASE_URL (from Supabase Settings > API)
+#    - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (anon key)
+#    - SUPABASE_SERVICE_ROLE_KEY (server-only, never expose)
+#    - ADMIN_EMAILS (comma-separated admin allowlist)
 # 4. Deploy to production
 ```
 

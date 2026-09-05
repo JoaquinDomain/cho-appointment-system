@@ -12,11 +12,33 @@ interface QRScannerProps {
 export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
   const scannerRef = useRef<HTMLDivElement>(null)
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
+  // Stabilize callback so the camera isn't re-initialized on every parent render.
+  const onScanRef = useRef(onScan)
+  useEffect(() => {
+    onScanRef.current = onScan
+  }, [onScan])
 
   useEffect(() => {
     let mounted = true
+
+    const stopScanner = async () => {
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            await html5QrCodeRef.current.stop()
+          }
+          html5QrCodeRef.current.clear()
+        } catch (err) {
+          console.error('Error stopping scanner:', err)
+        } finally {
+          html5QrCodeRef.current = null
+        }
+      }
+      if (mounted) setIsScanning(false)
+    }
 
     const startScanner = async () => {
       try {
@@ -35,8 +57,8 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
           config,
           (decodedText: string) => {
             if (mounted) {
-              onScan(decodedText)
-              stopScanner()
+              const cb = onScanRef.current
+              void stopScanner().finally(() => cb(decodedText))
             }
           },
           () => {
@@ -55,25 +77,22 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       }
     }
 
-    const stopScanner = async () => {
-      if (html5QrCodeRef.current?.isScanning) {
-        try {
-          await html5QrCodeRef.current.stop()
-          html5QrCodeRef.current.clear()
-        } catch (err) {
-          console.error('Error stopping scanner:', err)
-        }
-      }
-      setIsScanning(false)
-    }
-
     startScanner()
 
     return () => {
       mounted = false
-      stopScanner()
+      const inst = html5QrCodeRef.current
+      html5QrCodeRef.current = null
+      if (inst) {
+        inst.stop().catch(() => {})
+        try {
+          inst.clear()
+        } catch {
+          // ignore cleanup errors
+        }
+      }
     }
-  }, [onScan])
+  }, [retryKey])
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -104,7 +123,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             <div className="text-center p-4">
               <p className="text-red-800">{error}</p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => { setError(''); setRetryKey(k => k + 1) }}
                 className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Retry

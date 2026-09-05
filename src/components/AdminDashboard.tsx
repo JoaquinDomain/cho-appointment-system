@@ -1,77 +1,115 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { Appointment, HEALTH_FACILITIES } from '@/lib/types'
 import QRScanner from './QRScanner'
+
+const PAGE_SIZE = 25
+
+function todayLocal(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [facilityFilter, setFacilityFilter] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState({ total: 0, today: 0, yakap: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  const [scanError, setScanError] = useState('')
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  const fetchAppointments = useCallback(() => {
-    supabase
-      .from('appointments')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error fetching appointments:', error)
-          setError('Failed to load appointments. Please check your authentication.')
-        } else {
-          setAppointments(data || [])
-        }
-        setLoading(false)
+  // Server-side paginated + filtered list via admin-only API (service_role).
+  // No direct Supabase read from the browser; session cookie authenticates.
+  const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams({
+        page: String(pageNum),
+        limit: String(PAGE_SIZE),
+        ...(search.trim() ? { search: search.trim() } : {}),
+        ...(facility ? { facility } : {}),
       })
+      const [listRes, todayRes, yakapRes] = await Promise.all([
+        fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin' }),
+        fetch(`/api/appointments?date=${todayLocal()}&limit=1`, { credentials: 'same-origin' }),
+        fetch(`/api/appointments?yakap=true&limit=1`, { credentials: 'same-origin' }),
+      ])
+      if (listRes.status === 401) throw new Error('Session expired. Please log in again.')
+      if (!listRes.ok) throw new Error('Failed to load appointments.')
+      const listJson = await listRes.json()
+      setAppointments(listJson.data ?? [])
+      setTotal(listJson.total ?? 0)
+      // Stats from server-side counts (accurate with pagination)
+      const tJson = todayRes.ok ? await todayRes.json().catch(() => null) : null
+      const yJson = yakapRes.ok ? await yakapRes.json().catch(() => null) : null
+      setStats({
+        total: listJson.total ?? 0,
+        today: typeof tJson?.total === 'number' ? tJson.total : 0,
+        yakap: typeof yJson?.total === 'number' ? yJson.total : 0,
+      })
+    } catch (err) {
+      console.error('Error fetching appointments:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load appointments.')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    fetchAppointments()
-  }, [fetchAppointments])
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim())
+    }, 400)
+    return () => clearTimeout(t)
+  }, [searchTerm])
 
-  const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return {
-      total: appointments.length,
-      today: appointments.filter(apt => apt.appointment_date === today).length,
-      yakap: appointments.filter(apt => apt.yakap_registered).length
-    }
-  }, [appointments])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchAppointments(page, debouncedSearch, facilityFilter)
+  }, [fetchAppointments, page, debouncedSearch, facilityFilter])
 
-  const filteredAppointments = useMemo(() => {
-    let filtered = appointments
+  // Server returns already-filtered page; keep name for minimal template diff.
+  const filteredAppointments = appointments
 
-    if (searchTerm) {
-      filtered = filtered.filter(apt =>
-        apt.patient_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (facilityFilter) {
-      filtered = filtered.filter(apt => apt.consultation_facility === facilityFilter)
-    }
-
-    return filtered
-  }, [appointments, searchTerm, facilityFilter])
-
-  const handleScanResult = (result: string) => {
+  const handleScanResult = async (result: string) => {
     setShowScanner(false)
-
-    // Find the appointment by ID
-    const found = appointments.find(apt => apt.id === result)
-    if (found) {
-      openDetails(found)
-    } else {
-      alert('Appointment not found with this QR code')
+    setScanError('')
+    const id = result.trim()
+    // 1) hit current page first for instant feedback
+    const local = appointments.find(apt => apt.id === id)
+    if (local) {
+      openDetails(local)
+      return
+    }
+    // 2) admin-only server lookup (validates UUID + session server-side)
+    try {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(id)}`, {
+        credentials: 'same-origin',
+      })
+      if (res.status === 404) {
+        setScanError('Appointment not found with this QR code.')
+        return
+      }
+      if (!res.ok) throw new Error('Lookup failed.')
+      const json = await res.json()
+      openDetails(json.data as Appointment)
+    } catch (err) {
+      console.error('QR lookup failed:', err)
+      setScanError('QR lookup failed. Please try again.')
     }
   }
 
@@ -91,17 +129,23 @@ export default function AdminDashboard() {
     if (!selectedAppointment) return
     setDeleting(true)
     setDeleteError('')
-    const { error } = await supabase
-      .from('appointments')
-      .delete()
-      .eq('id', selectedAppointment.id)
-    setDeleting(false)
-    if (error) {
-      console.error('Error deleting appointment:', error)
-      setDeleteError('Failed to delete. Please check your authentication and try again.')
-    } else {
+    try {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(selectedAppointment.id)}`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Delete failed.')
+      }
       setAppointments(prev => prev.filter(apt => apt.id !== selectedAppointment.id))
+      setTotal(t => Math.max(t - 1, 0))
       closeDetails()
+    } catch (err) {
+      console.error('Error deleting appointment:', err)
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete. Please try again.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -141,9 +185,7 @@ export default function AdminDashboard() {
           <p className="text-red-800">{error}</p>
           <button
             onClick={() => {
-              setLoading(true)
-              setError('')
-              fetchAppointments()
+              fetchAppointments(page, debouncedSearch, facilityFilter)
             }}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
@@ -215,6 +257,11 @@ export default function AdminDashboard() {
             <QRScanner onScan={handleScanResult} onClose={() => setShowScanner(false)} />
           </div>
         )}
+        {scanError && (
+          <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+            {scanError}
+          </div>
+        )}
 
         {/* Search and Filter */}
         <div className="bg-white rounded-2xl shadow p-4 mb-6">
@@ -225,7 +272,7 @@ export default function AdminDashboard() {
                 type="text"
                 placeholder="Search by patient name..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -233,7 +280,7 @@ export default function AdminDashboard() {
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <select
                 value={facilityFilter}
-                onChange={(e) => setFacilityFilter(e.target.value)}
+                onChange={(e) => { setPage(1); setFacilityFilter(e.target.value) }}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
               >
                 <option value="">All Facilities</option>
@@ -243,8 +290,24 @@ export default function AdminDashboard() {
               </select>
             </div>
           </div>
-          <div className="mt-3 text-sm text-gray-600">
-            Showing {filteredAppointments.length} of {appointments.length} appointments
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600">
+            <span>Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
+            <span className="inline-flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(p - 1, 1))}
+                disabled={page <= 1 || loading}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setPage(p => (filteredAppointments.length === PAGE_SIZE ? p + 1 : p))}
+                disabled={filteredAppointments.length < PAGE_SIZE || loading}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </span>
           </div>
         </div>
 

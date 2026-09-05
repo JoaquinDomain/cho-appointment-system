@@ -1,20 +1,21 @@
 'use client'
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { Download, Printer } from 'lucide-react'
 
 export default function SiteQRPoster() {
-  const originUrl = useSyncExternalStore(
-    () => () => {},
-    () => window.location.origin,
-    () => ''
-  )
+  const [originUrl, setOriginUrl] = useState('')
+  const qrWrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOriginUrl(window.location.origin)
+  }, [])
   // On the admin site the poster must point patients to the public booking site
   const siteUrl = process.env.NEXT_PUBLIC_PATIENT_SITE_URL || originUrl
 
   const handleDownload = () => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement
+    const canvas = qrWrapRef.current?.querySelector('canvas') as HTMLCanvasElement | undefined
     if (canvas) {
       const link = document.createElement('a')
       link.download = 'cho-appointment-qr-poster.png'
@@ -42,7 +43,7 @@ export default function SiteQRPoster() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <div className="bg-white p-4 rounded-lg shadow-md border-2 border-blue-600">
+          <div ref={qrWrapRef} className="bg-white p-4 rounded-lg shadow-md border-2 border-blue-600">
             {siteUrl && <QRCodeCanvas value={siteUrl} size={256} level="H" />}
           </div>
         </div>
