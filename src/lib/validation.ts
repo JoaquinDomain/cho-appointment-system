@@ -1,4 +1,4 @@
-import { HEALTH_FACILITIES, LABORATORY_TESTS } from './types'
+import { HEALTH_FACILITIES, LABORATORY_TESTS, APPOINTMENT_STATUSES, type AppointmentStatus } from './types'
 
 const MAX_TESTS = LABORATORY_TESTS.length
 
@@ -148,4 +148,8 @@ export function validateAppointmentInput(body: unknown): {
 
 export function isValidUuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+}
+
+export function isValidStatus(value: unknown): value is AppointmentStatus {
+  return typeof value === 'string' && (APPOINTMENT_STATUSES as readonly string[]).includes(value)
 }

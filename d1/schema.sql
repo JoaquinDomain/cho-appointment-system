@@ -11,12 +11,14 @@ CREATE TABLE IF NOT EXISTS appointments (
   yakap_facility TEXT,
   selected_tests TEXT NOT NULL, -- JSON array of test labels
   appointment_date TEXT NOT NULL, -- YYYY-MM-DD
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','completed','cancelled')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_name ON appointments(patient_name);
 CREATE INDEX IF NOT EXISTS idx_appointments_consultation_facility ON appointments(consultation_facility);
 CREATE INDEX IF NOT EXISTS idx_appointments_appointment_date ON appointments(appointment_date);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 CREATE INDEX IF NOT EXISTS idx_appointments_created_at ON appointments(created_at DESC);
 
 -- Admin credentials (passwords stored as scrypt hashes, never plaintext).

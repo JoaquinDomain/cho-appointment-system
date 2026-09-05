@@ -78,8 +78,8 @@ export async function POST(req: Request) {
   try {
     await d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         id,
         parsed.data.patient_name,
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
 }
 
 // GET /api/appointments — admin-only, server-side search/filter/pagination.
-// Query: ?page=1&limit=25&search=&facility=&date=YYYY-MM-DD&yakap=true
+// Query: ?page=1&limit=25&search=&facility=&date=YYYY-MM-DD&from=YYYY-MM-DD&to=YYYY-MM-DD&status=pending&yakap=true
 export async function GET(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -124,7 +124,11 @@ export async function GET(req: Request) {
   const search = (url.searchParams.get('search') ?? '').trim().slice(0, 100)
   const facility = (url.searchParams.get('facility') ?? '').trim().slice(0, 120)
   const date = (url.searchParams.get('date') ?? '').trim()
+  const from = (url.searchParams.get('from') ?? '').trim()
+  const to = (url.searchParams.get('to') ?? '').trim()
+  const status = (url.searchParams.get('status') ?? '').trim()
   const yakapOnly = url.searchParams.get('yakap') === 'true'
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
   const clauses: string[] = []
   const params: unknown[] = []
@@ -136,9 +140,22 @@ export async function GET(req: Request) {
     clauses.push('consultation_facility = ?')
     params.push(facility)
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (DATE_RE.test(date)) {
     clauses.push('appointment_date = ?')
     params.push(date)
+  } else {
+    if (DATE_RE.test(from)) {
+      clauses.push('appointment_date >= ?')
+      params.push(from)
+    }
+    if (DATE_RE.test(to)) {
+      clauses.push('appointment_date <= ?')
+      params.push(to)
+    }
+  }
+  if (['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+    clauses.push('status = ?')
+    params.push(status)
   }
   if (yakapOnly) clauses.push('yakap_registered = 1')
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''

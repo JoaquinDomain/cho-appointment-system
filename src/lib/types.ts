@@ -1,3 +1,7 @@
+export const APPOINTMENT_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'] as const
+
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number]
+
 export interface Appointment {
   id: string
   patient_name: string
@@ -7,6 +11,7 @@ export interface Appointment {
   yakap_facility?: string
   selected_tests: string[]
   appointment_date: string
+  status: AppointmentStatus
   created_at: string
 }
 

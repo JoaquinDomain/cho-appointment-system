@@ -1,11 +1,23 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck } from 'lucide-react'
-import { Appointment, HEALTH_FACILITIES } from '@/lib/types'
+import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3 } from 'lucide-react'
+import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, type AppointmentStatus } from '@/lib/types'
 import QRScanner from './QRScanner'
 
 const PAGE_SIZE = 25
+
+const STATUS_STYLES: Record<AppointmentStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-gray-200 text-gray-600',
+}
+
+function toCsvCell(value: string | number): string {
+  const s = String(value ?? '')
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
 
 function todayLocal(): string {
   const d = new Date()
@@ -20,6 +32,8 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [facilityFilter, setFacilityFilter] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState({ total: 0, today: 0, yakap: 0 })
@@ -31,10 +45,20 @@ export default function AdminDashboard() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ patient_name: '', age: '', consultation_facility: '', appointment_date: '' })
+  const [editError, setEditError] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [showQuotas, setShowQuotas] = useState(false)
+  const [quotaDate, setQuotaDate] = useState(() => todayLocal())
+  const [quotaCounts, setQuotaCounts] = useState<Record<string, number>>({})
+  const [quotaLoading, setQuotaLoading] = useState(false)
 
-  // Server-side paginated + filtered list via admin-only API (service_role).
+  // Server-side paginated + filtered list via admin-only API.
   // No direct database read from the browser; session cookie authenticates.
-  const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string) => {
+  const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string, date: string, status: string) => {
     setLoading(true)
     setError('')
     try {
@@ -43,6 +67,8 @@ export default function AdminDashboard() {
         limit: String(PAGE_SIZE),
         ...(search.trim() ? { search: search.trim() } : {}),
         ...(facility ? { facility } : {}),
+        ...(date ? { date } : {}),
+        ...(status ? { status } : {}),
       })
       const [listRes, todayRes, yakapRes] = await Promise.all([
         fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin' }),
@@ -79,8 +105,27 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchAppointments(page, debouncedSearch, facilityFilter)
-  }, [fetchAppointments, page, debouncedSearch, facilityFilter])
+    void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter)
+  }, [fetchAppointments, page, debouncedSearch, facilityFilter, dateFilter, statusFilter])
+
+  const fetchQuotas = useCallback(async (date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return
+    setQuotaLoading(true)
+    try {
+      const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`, { credentials: 'same-origin' })
+      const json = await res.json().catch(() => ({}))
+      setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
+    } catch {
+      setQuotaCounts({})
+    } finally {
+      setQuotaLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (showQuotas) void fetchQuotas(quotaDate)
+  }, [showQuotas, quotaDate, fetchQuotas])
 
   // Server returns already-filtered page; keep name for minimal template diff.
   const filteredAppointments = appointments
@@ -117,12 +162,16 @@ export default function AdminDashboard() {
     setSelectedAppointment(appointment)
     setConfirmingDelete(false)
     setDeleteError('')
+    setEditing(false)
+    setEditError('')
   }
 
   const closeDetails = () => {
     setSelectedAppointment(null)
     setConfirmingDelete(false)
     setDeleteError('')
+    setEditing(false)
+    setEditError('')
   }
 
   const handleDelete = async () => {
@@ -146,6 +195,135 @@ export default function AdminDashboard() {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete. Please try again.')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleStatusChange = async (next: AppointmentStatus) => {
+    if (!selectedAppointment || updatingStatus) return
+    setUpdatingStatus(true)
+    setDeleteError('')
+    try {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(selectedAppointment.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ status: next }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error((json as { error?: string }).error ?? 'Status update failed.')
+      }
+      const updated = { ...selectedAppointment, status: next }
+      setSelectedAppointment(updated)
+      setAppointments(prev => prev.map(a => (a.id === updated.id ? updated : a)))
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to update status.')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const openEdit = () => {
+    if (!selectedAppointment) return
+    setEditForm({
+      patient_name: selectedAppointment.patient_name,
+      age: String(selectedAppointment.age),
+      consultation_facility: selectedAppointment.consultation_facility,
+      appointment_date: selectedAppointment.appointment_date,
+    })
+    setEditError('')
+    setEditing(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedAppointment || savingEdit) return
+    setSavingEdit(true)
+    setEditError('')
+    try {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(selectedAppointment.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          patient_name: editForm.patient_name,
+          age: Number(editForm.age),
+          consultation_facility: editForm.consultation_facility,
+          yakap_registered: selectedAppointment.yakap_registered,
+          yakap_facility: selectedAppointment.yakap_facility ?? null,
+          selected_tests: selectedAppointment.selected_tests,
+          appointment_date: editForm.appointment_date,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const details = Array.isArray((json as { details?: string[] }).details)
+          ? `: ${(json as { details: string[] }).details.join(' ')}`
+          : ''
+        throw new Error(`${(json as { error?: string }).error ?? 'Update failed.'}${details}`)
+      }
+      const updated = {
+        ...selectedAppointment,
+        patient_name: editForm.patient_name.trim(),
+        age: Number(editForm.age),
+        consultation_facility: editForm.consultation_facility,
+        appointment_date: editForm.appointment_date,
+      }
+      setSelectedAppointment(updated)
+      setAppointments(prev => prev.map(a => (a.id === updated.id ? updated : a)))
+      setEditing(false)
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to save changes.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleExportCsv = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const all: Appointment[] = []
+      let p = 1
+      for (;;) {
+        const params = new URLSearchParams({
+          page: String(p),
+          limit: '100',
+          ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+          ...(facilityFilter ? { facility: facilityFilter } : {}),
+          ...(dateFilter ? { date: dateFilter } : {}),
+          ...(statusFilter ? { status: statusFilter } : {}),
+        })
+        const res = await fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin' })
+        if (!res.ok) throw new Error('Export failed.')
+        const json = (await res.json()) as { data?: Appointment[]; total?: number }
+        const rows = json.data ?? []
+        all.push(...rows)
+        if (rows.length < 100 || all.length >= (json.total ?? 0) || all.length >= 2000) break
+        p += 1
+      }
+      const header = ['id', 'patient_name', 'age', 'consultation_facility', 'yakap_registered', 'yakap_facility', 'selected_tests', 'appointment_date', 'status', 'created_at']
+      const lines = [header.join(',')]
+      for (const a of all) {
+        lines.push(
+          [a.id, a.patient_name, a.age, a.consultation_facility, a.yakap_registered ? 'YES' : 'NO', a.yakap_facility ?? '', a.selected_tests.join('; '), a.appointment_date, a.status, a.created_at]
+            .map(toCsvCell)
+            .join(',')
+        )
+      }
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `appointments-${dateFilter || 'all'}-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Export failed:', err)
+      setError('CSV export failed. Please try again.')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -185,7 +363,7 @@ export default function AdminDashboard() {
           <p className="text-red-800">{error}</p>
           <button
             onClick={() => {
-              fetchAppointments(page, debouncedSearch, facilityFilter)
+              fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter)
             }}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
@@ -263,9 +441,62 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm rounded-xl hover:bg-gray-700 disabled:opacity-60"
+          >
+            <Download className="w-4 h-4" />
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+          <button
+            onClick={() => setShowQuotas(v => !v)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-sm rounded-xl hover:bg-gray-50"
+          >
+            <BarChart3 className="w-4 h-4" />
+            {showQuotas ? 'Hide Quotas' : 'Daily Quotas'}
+          </button>
+        </div>
+
+        {/* Daily quotas */}
+        {showQuotas && (
+          <div className="bg-white rounded-2xl shadow p-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+              <label className="text-sm font-medium text-gray-700">Quota date</label>
+              <input
+                type="date"
+                value={quotaDate}
+                onChange={(e) => setQuotaDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white"
+              />
+              {quotaLoading && <span className="text-sm text-gray-500">Loading…</span>}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {Object.values(TEST_CONFIG).map(t => {
+                const booked = quotaCounts[t.label] ?? 0
+                const pct = Math.min(100, Math.round((booked / t.limit) * 100))
+                const full = booked >= t.limit
+                return (
+                  <div key={t.label} className={`p-3 rounded-xl border ${full ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-900">{t.label}</span>
+                      <span className={full ? 'text-red-700 font-semibold' : 'text-gray-600'}>{booked}/{t.limit}{full ? ' FULL' : ''}</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className={`h-full ${full ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Search and Filter */}
         <div className="bg-white rounded-2xl shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
@@ -289,7 +520,49 @@ export default function AdminDashboard() {
                 ))}
               </select>
             </div>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => { setPage(1); setDateFilter(e.target.value) }}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <select
+                value={statusFilter}
+                onChange={(e) => { setPage(1); setStatusFilter(e.target.value) }}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              >
+                <option value="">All Statuses</option>
+                {APPOINTMENT_STATUSES.map(s => (
+                  <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          {(dateFilter || statusFilter) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {dateFilter && (
+                <button onClick={() => { setPage(1); setDateFilter('') }} className="text-xs px-3 py-1.5 bg-gray-100 rounded-full hover:bg-gray-200">
+                  Date {dateFilter} ✕
+                </button>
+              )}
+              {statusFilter && (
+                <button onClick={() => { setPage(1); setStatusFilter('') }} className="text-xs px-3 py-1.5 bg-gray-100 rounded-full hover:bg-gray-200">
+                  Status {statusFilter} ✕
+                </button>
+              )}
+              <button
+                onClick={() => { setPage(1); setDateFilter(todayLocal()) }}
+                className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100"
+              >
+                Today
+              </button>
+            </div>
+          )}
           <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600">
             <span>Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
             <span className="inline-flex gap-2">
@@ -330,12 +603,17 @@ export default function AdminDashboard() {
                     </button>
                     <p className="text-sm text-gray-500">Age {appointment.age}</p>
                   </div>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    appointment.yakap_registered
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    YAKAP {appointment.yakap_registered ? 'YES' : 'NO'}
+                  <span className="flex flex-col items-end gap-1">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      appointment.yakap_registered
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      YAKAP {appointment.yakap_registered ? 'YES' : 'NO'}
+                    </span>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${STATUS_STYLES[appointment.status]}`}>
+                      {appointment.status}
+                    </span>
                   </span>
                 </div>
                 <div className="space-y-1.5 text-sm text-gray-600">
@@ -393,6 +671,9 @@ export default function AdminDashboard() {
                     YAKAP
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tests
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -407,7 +688,7 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                       No appointments found matching your criteria
                     </td>
                   </tr>
@@ -433,11 +714,16 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          appointment.yakap_registered 
-                            ? 'bg-green-100 text-green-800' 
+                          appointment.yakap_registered
+                            ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {appointment.yakap_registered ? 'YES' : 'NO'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${STATUS_STYLES[appointment.status]}`}>
+                          {appointment.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -551,11 +837,65 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
+                  <p className="text-xs text-gray-500 uppercase mb-1.5">Status</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {APPOINTMENT_STATUSES.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => handleStatusChange(s)}
+                        disabled={updatingStatus || selectedAppointment.status === s}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full capitalize border disabled:opacity-60 ${
+                          selectedAppointment.status === s
+                            ? STATUS_STYLES[s] + ' border-transparent'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {updatingStatus && <p className="mt-1 text-xs text-gray-500">Updating…</p>}
+                </div>
+
+                <div>
                   <p className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
                     <Hash className="w-3.5 h-3.5" /> Appointment ID
                   </p>
                   <p className="text-sm font-mono text-gray-900 break-all">{selectedAppointment.id}</p>
                 </div>
+
+                {editing ? (
+                  <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                      <Pencil className="w-4 h-4" /> Edit appointment
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="text-sm text-gray-700">Patient name
+                        <input value={editForm.patient_name} onChange={(e) => setEditForm(f => ({ ...f, patient_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      </label>
+                      <label className="text-sm text-gray-700">Age
+                        <input type="number" min={1} max={120} value={editForm.age} onChange={(e) => setEditForm(f => ({ ...f, age: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      </label>
+                      <label className="text-sm text-gray-700">Facility
+                        <select value={editForm.consultation_facility} onChange={(e) => setEditForm(f => ({ ...f, consultation_facility: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white">
+                          {HEALTH_FACILITIES.map(f => (<option key={f} value={f}>{f}</option>))}
+                        </select>
+                      </label>
+                      <label className="text-sm text-gray-700">Date
+                        <input type="date" value={editForm.appointment_date} onChange={(e) => setEditForm(f => ({ ...f, appointment_date: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      </label>
+                    </div>
+                    {editError && <p className="text-sm text-red-700">{editError}</p>}
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-60 font-medium">
+                        {savingEdit ? 'Saving...' : 'Save changes'}
+                      </button>
+                      <button onClick={() => setEditing(false)} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {deleteError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
@@ -585,6 +925,13 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <>
+                    <button
+                      onClick={openEdit}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 font-medium"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </button>
                     <button
                       onClick={() => setConfirmingDelete(true)}
                       className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl hover:bg-red-100 font-medium"
