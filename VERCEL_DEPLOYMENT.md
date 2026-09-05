@@ -3,8 +3,8 @@
 ## Prerequisites
 
 - GitHub repository created and code pushed
-- Supabase project set up with database schema
-- Supabase project URL and anon key available
+- Cloudflare D1 database created with `d1/schema.sql` applied
+- D1 API token (D1 Edit) available
 
 ## Step 1: Connect to Vercel
 
@@ -31,15 +31,16 @@
 Add these environment variables in Project Settings > Environment Variables:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_D1_DATABASE_ID=your-d1-database-id
+CLOUDFLARE_D1_API_TOKEN=your-d1-api-token
 ```
 
 To get these values:
-1. Go to your Supabase project dashboard
-2. Navigate to Settings > API
-3. Copy Project URL and Anon Key
-4. Paste them into Vercel environment variables
+1. Account ID: Cloudflare dashboard URL or Workers > Overview
+2. Database ID: output of `npx wrangler d1 create cho-appointments`
+3. API token: My Profile > API Tokens (D1 Edit permission)
+4. Paste them into Vercel environment variables (server-only, all environments)
 
 ## Step 4: Deploy
 
@@ -64,7 +65,7 @@ Replace with your actual Vercel deployment URL.
 
 1. **Public Portal**: Visit your main URL to test the appointment form
 2. **Admin Dashboard**: Visit `https://your-url.vercel.app/admin`
-3. **Test Authentication**: Create an admin user in Supabase and test login
+3. **Test Authentication**: Seed an admin via `node scripts/seed-admin.mjs` and test login
 4. **Test QR Scanner**: Test the QR scanning functionality (requires HTTPS)
 
 ## Step 6: Custom Domain (Optional)
@@ -80,15 +81,14 @@ Replace with your actual Vercel deployment URL.
 For different environments (Development, Preview, Production):
 
 ### Development
-```env
-NEXT_PUBLIC_SUPABASE_URL=dev_supabase_url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=dev_supabase_key
-```
+Use a separate D1 database (e.g. `cho-appointments-dev`) with its own
+`CLOUDFLARE_D1_DATABASE_ID`; the account ID and a scoped token stay the same.
 
 ### Production
 ```env
-NEXT_PUBLIC_SUPABASE_URL=prod_supabase_url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=prod_supabase_key
+CLOUDFLARE_ACCOUNT_ID=prod_account_id
+CLOUDFLARE_D1_DATABASE_ID=prod_d1_database_id
+CLOUDFLARE_D1_API_TOKEN=prod_d1_api_token
 ```
 
 ## Automatic Deployments
@@ -112,9 +112,9 @@ Vercel automatically deploys:
 - Check the build logs for specific errors
 
 ### Database Connection Issues
-- Verify Supabase URL and keys are correct
-- Check Supabase project is active
-- Ensure RLS policies are properly configured
+- Verify `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_D1_DATABASE_ID` / `CLOUDFLARE_D1_API_TOKEN`
+- Confirm `d1/schema.sql` was applied to the right database
+- Check the token has D1 Edit permission and isn't expired
 
 ### QR Scanner Not Working
 - QR scanner requires HTTPS (works automatically on Vercel)
@@ -124,10 +124,10 @@ Vercel automatically deploys:
 ## Security Best Practices
 
 1. **Never commit** `.env.local` to Git
-2. Use environment-specific Supabase projects
+2. Use environment-specific D1 databases (dev vs prod)
 3. Enable Vercel password protection for admin routes (optional)
 4. Keep dependencies updated
-5. Monitor Supabase usage and costs
+5. Rotate the D1 API token if ever exposed
 
 ## Performance Optimization
 
@@ -144,7 +144,7 @@ For Vercel-specific issues:
 
 For application issues:
 - Check the main README.md
-- Review SETUP.md for Supabase configuration
+- Review SETUP.md for D1 configuration
 - Check browser console for errors
 
 ---

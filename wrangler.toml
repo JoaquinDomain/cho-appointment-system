@@ -1,0 +1,13 @@
+# Cloudflare configuration — used ONLY for D1 database management.
+# The Next.js app itself stays deployed on Vercel and reaches D1 over the
+# Cloudflare HTTP API (see src/lib/d1.ts). Fill in database_id after creating.
+#
+#   npx wrangler d1 create cho-appointments
+#   npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql
+
+name = "cho-appointment-system"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cho-appointments"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"

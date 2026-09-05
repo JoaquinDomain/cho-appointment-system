@@ -107,7 +107,7 @@ export default function AppointmentForm() {
 
     try {
       // Secure path: validated + quota-checked + rate-limited server API
-      // generates the UUID. No direct Supabase write, no client-made ID.
+      // generates the UUID. No direct database write, no client-made ID.
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

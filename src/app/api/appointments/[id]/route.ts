@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getServiceRoleClient } from '@/lib/supabase-admin'
-import { requireAdmin } from '@/lib/admin-auth'
+import { d1First, d1Run } from '@/lib/d1'
+import { requireAdmin } from '@/lib/session'
 import { isValidUuid } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { mapAppointmentRow, type AppointmentRow } from '@/lib/appointments'
 
-// GET /api/appointments/[id] — admin-only single record (used by QR scan lookup).
+// GET /api/appointments/[id] — admin-only single record (QR scan lookup).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireAdmin(_req)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -15,26 +16,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Invalid appointment ID.' }, { status: 400 })
   }
 
-  let service
+  let row: AppointmentRow | null
   try {
-    service = getServiceRoleClient()
-  } catch {
-    return NextResponse.json({ error: 'Admin service unavailable.' }, { status: 503 })
-  }
-
-  const { data, error } = await service.from('appointments').select('*').eq('id', id).maybeSingle()
-  if (error) {
-    console.error('Admin lookup failed:', error.message)
+    row = await d1First<AppointmentRow>('SELECT * FROM appointments WHERE id = ?', [id])
+  } catch (e) {
+    console.error('Admin lookup failed:', e)
     return NextResponse.json({ error: 'Lookup failed.' }, { status: 500 })
   }
-  if (!data) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
-  return NextResponse.json({ data })
+  if (!row) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
+  return NextResponse.json({ data: mapAppointmentRow(row) })
 }
 
-// DELETE /api/appointments/[id] — admin-only. RLS also enforces is_admin()
-// for direct-DB deletes, so this endpoint is the audited path.
+// DELETE /api/appointments/[id] — admin-only.
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireAdmin(req)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -50,16 +45,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Invalid appointment ID.' }, { status: 400 })
   }
 
-  let service
   try {
-    service = getServiceRoleClient()
-  } catch {
-    return NextResponse.json({ error: 'Admin service unavailable.' }, { status: 503 })
-  }
-
-  const { error } = await service.from('appointments').delete().eq('id', id)
-  if (error) {
-    console.error('Admin delete failed:', error.message)
+    await d1Run('DELETE FROM appointments WHERE id = ?', [id])
+  } catch (e) {
+    console.error('Admin delete failed:', e)
     return NextResponse.json({ error: 'Failed to delete appointment.' }, { status: 500 })
   }
   return NextResponse.json({ ok: true })

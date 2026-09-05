@@ -6,7 +6,7 @@ Since the GitHub CLI is not installed, please follow these manual steps to compl
 
 1. Go to [https://github.com/new](https://github.com/new)
 2. Repository name: `cho-appointment-system`
-3. Description: `CHO Laboratory Appointment Booking & Admin System - Next.js, Supabase, Tailwind CSS`
+3. Description: `CHO Laboratory Appointment Booking & Admin System - Next.js, Cloudflare D1, Tailwind CSS`
 4. Make it **Public** (recommended) or Private
 5. **Do not** initialize with README, .gitignore, or license (we already have these)
 6. Click "Create repository"

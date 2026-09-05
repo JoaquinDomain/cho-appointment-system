@@ -18,7 +18,8 @@ const nextConfig: NextConfig = {
             value: "max-age=63072000; includeSubDomains; preload",
           },
           {
-            // Kept compatible with Next.js inline scripts + Supabase + Vercel Live.
+            // Browser talks only to same-origin /api (D1 is server-side).
+            // Kept compatible with Next.js inline scripts + Vercel Live.
             // Tighten further (remove unsafe-inline) only with nonces.
             key: "Content-Security-Policy",
             value: [
@@ -27,7 +28,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live",
+              "connect-src 'self' https://vercel.live",
               "media-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",

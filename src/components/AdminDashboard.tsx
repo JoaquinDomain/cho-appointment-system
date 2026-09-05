@@ -33,7 +33,7 @@ export default function AdminDashboard() {
   const [deleteError, setDeleteError] = useState('')
 
   // Server-side paginated + filtered list via admin-only API (service_role).
-  // No direct Supabase read from the browser; session cookie authenticates.
+  // No direct database read from the browser; session cookie authenticates.
   const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string) => {
     setLoading(true)
     setError('')

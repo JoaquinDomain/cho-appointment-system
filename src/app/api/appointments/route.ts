@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getServiceRoleClient } from '@/lib/supabase-admin'
-import { requireAdmin } from '@/lib/admin-auth'
+import { randomUUID } from 'node:crypto'
+import { d1Query, d1Run } from '@/lib/d1'
+import { requireAdmin } from '@/lib/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { TEST_CONFIG } from '@/lib/types'
+import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 
 // POST /api/appointments — public booking: validated + quota-checked +
-// rate-limited. Writes with service_role (bypasses RLS); the server
-// generates the UUID (client-supplied `id`, if any, is ignored).
+// rate-limited. The server generates the UUID (client `id`, if any, ignored).
 export async function POST(req: Request) {
   const ip = getClientIp(req)
   const rl = checkRateLimit(`book:${ip}`, 10, 10 * 60 * 1000)
@@ -30,32 +31,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
 
-  let service
+  let existing: Array<{ selected_tests: string }>
   try {
-    service = getServiceRoleClient()
+    existing = await d1Query<{ selected_tests: string }>(
+      'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
+      [parsed.data.appointment_date]
+    )
   } catch (e) {
-    console.error('Service client misconfigured:', e)
-    return NextResponse.json({ error: 'Booking service unavailable.' }, { status: 503 })
-  }
-
-  // Daily per-test quota enforcement against existing bookings for the date.
-  const { data: existing, error: quotaError } = await service
-    .from('appointments')
-    .select('selected_tests')
-    .eq('appointment_date', parsed.data.appointment_date)
-
-  if (quotaError) {
-    console.error('Quota check failed:', quotaError.message)
+    console.error('Quota check failed:', e)
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
   const counts: Record<string, number> = {}
-  for (const appt of existing ?? []) {
-    const tests = (appt as { selected_tests?: unknown }).selected_tests
-    if (Array.isArray(tests)) {
-      for (const t of tests) {
-        if (typeof t === 'string') counts[t] = (counts[t] || 0) + 1
+  for (const appt of existing) {
+    try {
+      const tests: unknown = JSON.parse(appt.selected_tests)
+      if (Array.isArray(tests)) {
+        for (const t of tests) {
+          if (typeof t === 'string') counts[t] = (counts[t] || 0) + 1
+        }
       }
+    } catch {
+      // Ignore malformed rows when counting.
     }
   }
 
@@ -76,29 +73,41 @@ export async function POST(req: Request) {
     )
   }
 
-  const { error, data } = await service
-    .from('appointments')
-    .insert(parsed.data)
-    .select('id')
-    .single()
-
-  if (error || !data) {
-    console.error('Booking insert failed:', error?.message)
-    // Surface constraint violations as 400, everything else as 500.
-    const msg = error?.message ?? ''
-    if (/check|constraint|invalid|range|window/i.test(msg)) {
+  const id = randomUUID()
+  const createdAt = new Date().toISOString()
+  try {
+    await d1Run(
+      `INSERT INTO appointments
+        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        parsed.data.patient_name,
+        parsed.data.age,
+        parsed.data.consultation_facility,
+        parsed.data.yakap_registered ? 1 : 0,
+        parsed.data.yakap_facility,
+        JSON.stringify(parsed.data.selected_tests),
+        parsed.data.appointment_date,
+        createdAt,
+      ]
+    )
+  } catch (e) {
+    console.error('Booking insert failed:', e)
+    const msg = e instanceof Error ? e.message : ''
+    if (/CHECK|constraint/i.test(msg)) {
       return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
     }
     return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true, id: (data as { id: string }).id }, { status: 201 })
+  return NextResponse.json({ success: true, id }, { status: 201 })
 }
 
 // GET /api/appointments — admin-only, server-side search/filter/pagination.
 // Query: ?page=1&limit=25&search=&facility=&date=YYYY-MM-DD&yakap=true
 export async function GET(req: Request) {
-  const auth = await requireAdmin()
+  const auth = await requireAdmin(req)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
@@ -117,28 +126,39 @@ export async function GET(req: Request) {
   const date = (url.searchParams.get('date') ?? '').trim()
   const yakapOnly = url.searchParams.get('yakap') === 'true'
 
-  let service
-  try {
-    service = getServiceRoleClient()
-  } catch (e) {
-    console.error('Service client misconfigured:', e)
-    return NextResponse.json({ error: 'Admin service unavailable.' }, { status: 503 })
+  const clauses: string[] = []
+  const params: unknown[] = []
+  if (search) {
+    clauses.push(`patient_name LIKE ? ESCAPE '\\'`)
+    params.push(`%${escapeLike(search)}%`)
   }
+  if (facility) {
+    clauses.push('consultation_facility = ?')
+    params.push(facility)
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    clauses.push('appointment_date = ?')
+    params.push(date)
+  }
+  if (yakapOnly) clauses.push('yakap_registered = 1')
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
 
-  let query = service.from('appointments').select('*', { count: 'exact' })
-  if (search) query = query.ilike('patient_name', `%${search.replace(/[%_]/g, '')}%`)
-  if (facility) query = query.eq('consultation_facility', facility)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) query = query.eq('appointment_date', date)
-  if (yakapOnly) query = query.eq('yakap_registered', true)
-
-  const from = (page - 1) * limit
-  const { data, error, count } = await query
-    .order('created_at', { ascending: false })
-    .range(from, from + limit - 1)
-
-  if (error) {
-    console.error('Admin list failed:', error.message)
+  try {
+    const [countRow, rows] = await Promise.all([
+      d1Query<{ total: number }>(`SELECT COUNT(*) AS total FROM appointments ${where}`, params),
+      d1Query<AppointmentRow>(
+        `SELECT * FROM appointments ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [...params, limit, (page - 1) * limit]
+      ),
+    ])
+    return NextResponse.json({
+      data: rows.map(mapAppointmentRow),
+      total: countRow[0]?.total ?? 0,
+      page,
+      limit,
+    })
+  } catch (e) {
+    console.error('Admin list failed:', e)
     return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
   }
-  return NextResponse.json({ data: data ?? [], total: count ?? 0, page, limit })
 }

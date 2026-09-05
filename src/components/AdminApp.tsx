@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { ShieldCheck, QrCode, LayoutDashboard, LogOut } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import AdminDashboard from '@/components/AdminDashboard'
 import SiteQRPoster from '@/components/SiteQRPoster'
 
@@ -15,17 +14,22 @@ export default function AdminApp() {
   const [error, setError] = useState('')
   const [showPoster, setShowPoster] = useState(false)
 
+  // Session lives in an httpOnly cookie issued by /api/admin/login (D1-backed).
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setIsAuthenticated(!!data.session)
-      setCheckingSession(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session)
-    })
-
-    return () => subscription.unsubscribe()
+    let cancelled = false
+    fetch('/api/admin/me', { credentials: 'same-origin' })
+      .then((res) => {
+        if (!cancelled) setIsAuthenticated(res.ok)
+      })
+      .catch(() => {
+        if (!cancelled) setIsAuthenticated(false)
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingSession(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -34,16 +38,17 @@ export default function AdminApp() {
     setError('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
       })
-
-      if (error) throw error
-
-      if (data.user) {
-        setIsAuthenticated(true)
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((json as { error?: string }).error ?? 'Failed to login.')
       }
+      setIsAuthenticated(true)
     } catch (error) {
       console.error('Login error:', error)
       setError(error instanceof Error ? error.message : 'Failed to login. Please check your credentials.')
@@ -53,7 +58,7 @@ export default function AdminApp() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {})
     setIsAuthenticated(false)
     setEmail('')
     setPassword('')
