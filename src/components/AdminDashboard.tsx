@@ -494,8 +494,8 @@ export default function AdminDashboard() {
               {Object.values(TEST_CONFIG).map(t => {
                 const booked = quotaCounts[t.label] ?? 0
                 const available = t.limit - booked
-                const pct = Math.min(100, Math.round((booked / t.limit) * 100))
-                const full = booked >= t.limit
+                const pct = Math.min(100, Math.round((available / t.limit) * 100))
+                const full = available <= 0
                 return (
                   <div key={t.label} className={`p-3 rounded-xl border ${full ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                     <div className="flex justify-between text-sm">
