@@ -4,6 +4,8 @@ import { requireAdmin } from '@/lib/session'
 import { isValidUuid, isValidStatus, validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { mapAppointmentRow, type AppointmentRow } from '@/lib/appointments'
+import { toSafeDetail } from '@/lib/safe-detail'
+import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 
 // GET /api/appointments/[id] — admin-only single record (QR scan lookup).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -51,8 +53,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const changed = await d1Run('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
-    console.error('Admin status update failed:', e)
-    return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
+    const msg = e instanceof Error ? e.message : ''
+    // Pre-migration databases lack the `status` column — apply the migration
+    // in place (same statement as d1/migrate_status.sql), then retry once.
+    if (isMissingStatusColumn(msg)) {
+      const healed = await ensureStatusColumn()
+      if (healed.ok) {
+        try {
+          const changed = await d1Run('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
+          if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
+        } catch (retryErr) {
+          console.error('Admin status update failed (post-migration retry):', retryErr)
+          return NextResponse.json(
+            {
+              error: 'Failed to update status.',
+              details: toSafeDetail(retryErr instanceof Error ? retryErr.message : ''),
+            },
+            { status: 500 }
+          )
+        }
+      } else {
+        console.error('Admin status update failed (migration needed):', e)
+        return NextResponse.json(
+          { error: 'Failed to update status.', details: healed.message },
+          { status: 500 }
+        )
+      }
+    } else {
+      console.error('Admin status update failed:', e)
+      return NextResponse.json(
+        { error: 'Failed to update status.', details: toSafeDetail(msg) },
+        { status: 500 }
+      )
+    }
   }
   return NextResponse.json({ ok: true, status })
 }

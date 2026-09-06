@@ -6,18 +6,8 @@ import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { TEST_CONFIG } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
-
-// Sanitize a database error for display: strip any credential-like material
-// and cap length. D1 error text contains no secrets, but this keeps the UI
-// output safe by construction.
-function toSafeDetail(msg: string): string {
-  const cleaned = msg
-    .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
-    .replace(/token\s*[:=]\s*\S+/gi, 'token [redacted]')
-    .trim()
-    .slice(0, 300)
-  return cleaned || 'Unknown database error. Check server logs.'
-}
+import { toSafeDetail } from '@/lib/safe-detail'
+import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 
 // POST /api/appointments — public booking: validated + quota-checked +
 // rate-limited. The server generates the UUID (client `id`, if any, ignored).
@@ -124,7 +114,7 @@ export async function POST(req: Request) {
     // "table appointments has no column named status" — handle both.
     // Retry the legacy shape so booking still succeeds, and log the
     // one-line remediation for the operator.
-    if (/no\s+(such\s+column|column named)\s*:?\s*status/i.test(msg)) {
+    if (isMissingStatusColumn(msg)) {
       console.warn(
         'appointments.status column missing — booking with legacy schema. ' +
           'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql'
@@ -247,14 +237,17 @@ export async function GET(req: Request) {
   if (yakapOnly) clauses.push('yakap_registered = 1')
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
 
-  try {
-    const [countRow, rows] = await Promise.all([
+  const runList = () =>
+    Promise.all([
       d1Query<{ total: number }>(`SELECT COUNT(*) AS total FROM appointments ${where}`, params),
       d1Query<AppointmentRow>(
         `SELECT * FROM appointments ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, (page - 1) * limit]
       ),
     ])
+
+  try {
+    const [countRow, rows] = await runList()
     return NextResponse.json({
       data: rows.map(mapAppointmentRow),
       total: countRow[0]?.total ?? 0,
@@ -262,6 +255,34 @@ export async function GET(req: Request) {
       limit,
     })
   } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    // A `status` filter on a pre-migration database fails on the missing
+    // column — self-heal, then retry once.
+    if (isMissingStatusColumn(msg)) {
+      const healed = await ensureStatusColumn()
+      if (healed.ok) {
+        try {
+          const [countRow, rows] = await runList()
+          return NextResponse.json({
+            data: rows.map(mapAppointmentRow),
+            total: countRow[0]?.total ?? 0,
+            page,
+            limit,
+          })
+        } catch (retryErr) {
+          console.error('Admin list failed (post-migration retry):', retryErr)
+          return NextResponse.json(
+            { error: 'Failed to load appointments.', details: toSafeDetail(retryErr instanceof Error ? retryErr.message : '') },
+            { status: 500 }
+          )
+        }
+      }
+      console.error('Admin list failed (migration needed):', e)
+      return NextResponse.json(
+        { error: 'Failed to load appointments.', details: healed.message },
+        { status: 500 }
+      )
+    }
     console.error('Admin list failed:', e)
     return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
   }

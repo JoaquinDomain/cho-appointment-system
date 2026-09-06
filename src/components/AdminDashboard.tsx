@@ -211,7 +211,14 @@ export default function AdminDashboard() {
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        throw new Error((json as { error?: string }).error ?? 'Status update failed.')
+        const rawDetails = (json as { details?: unknown }).details
+        const details = Array.isArray(rawDetails)
+          ? rawDetails.slice(0, 2).join(' ')
+          : typeof rawDetails === 'string' && rawDetails
+            ? rawDetails
+            : ''
+        const base = (json as { error?: string }).error ?? 'Status update failed.'
+        throw new Error(details ? `${base}${base.endsWith('.') ? ' ' : ': '}${details}` : base)
       }
       const updated = { ...selectedAppointment, status: next }
       setSelectedAppointment(updated)
