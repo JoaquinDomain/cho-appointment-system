@@ -72,9 +72,9 @@ export default function AdminDashboard() {
         ...(status ? { status } : {}),
       })
       const [listRes, todayRes, yakapRes] = await Promise.all([
-        fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin' }),
-        fetch(`/api/appointments?date=${todayLocal()}&limit=1`, { credentials: 'same-origin' }),
-        fetch(`/api/appointments?yakap=true&limit=1`, { credentials: 'same-origin' }),
+        fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin', cache: 'no-store' }),
+        fetch(`/api/appointments?date=${todayLocal()}&limit=1`, { credentials: 'same-origin', cache: 'no-store' }),
+        fetch(`/api/appointments?yakap=true&limit=1`, { credentials: 'same-origin', cache: 'no-store' }),
       ])
       if (listRes.status === 401) throw new Error('Session expired. Please log in again.')
       if (!listRes.ok) throw new Error('Failed to load appointments.')
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search by patient name..."
+                placeholder="Search name or appointment ID..."
                 value={searchTerm}
                 onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -583,6 +583,13 @@ export default function AdminDashboard() {
           <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600">
             <span>Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
             <span className="inline-flex gap-2">
+              <button
+                onClick={() => { void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter) }}
+                disabled={loading}
+                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+              >
+                {loading ? 'Loading…' : 'Refresh'}
+              </button>
               <button
                 onClick={() => setPage(p => Math.max(p - 1, 1))}
                 disabled={page <= 1 || loading}

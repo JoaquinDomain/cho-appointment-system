@@ -210,8 +210,10 @@ export async function GET(req: Request) {
   const clauses: string[] = []
   const params: unknown[] = []
   if (search) {
-    clauses.push(`patient_name LIKE ? ESCAPE '\\'`)
-    params.push(`%${escapeLike(search)}%`)
+    // Match patient name (partial) or exact appointment ID (lets staff paste
+    // the ID from the patient's confirmation screen).
+    clauses.push(`(patient_name LIKE ? ESCAPE '\\' OR id = ?)`)
+    params.push(`%${escapeLike(search)}%`, search)
   }
   if (facility) {
     clauses.push('consultation_facility = ?')
