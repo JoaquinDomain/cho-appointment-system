@@ -7,6 +7,18 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { TEST_CONFIG } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 
+// Sanitize a database error for display: strip any credential-like material
+// and cap length. D1 error text contains no secrets, but this keeps the UI
+// output safe by construction.
+function toSafeDetail(msg: string): string {
+  const cleaned = msg
+    .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/token\s*[:=]\s*\S+/gi, 'token [redacted]')
+    .trim()
+    .slice(0, 300)
+  return cleaned || 'Unknown database error. Check server logs.'
+}
+
 // POST /api/appointments — public booking: validated + quota-checked +
 // rate-limited. The server generates the UUID (client `id`, if any, ignored).
 export async function POST(req: Request) {
@@ -124,7 +136,11 @@ export async function POST(req: Request) {
         )
       } catch (retryErr) {
         console.error('Booking insert failed (legacy retry):', retryErr)
-        return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
+        const retryMsg = retryErr instanceof Error ? retryErr.message : ''
+        return NextResponse.json(
+          { error: 'Failed to create appointment.', details: toSafeDetail(retryMsg) },
+          { status: 500 }
+        )
       }
     } else {
       console.error('Booking insert failed:', e)
@@ -151,7 +167,22 @@ export async function POST(req: Request) {
           { status: 500 }
         )
       }
-      return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
+      if (/unauthor|forbidden|permission|read.only|invalid.*token|HTTP 40[13]/i.test(msg)) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create appointment.',
+            details:
+              'The database token cannot write (reads work, inserts fail). Use a Cloudflare API token with D1 Edit permission.',
+          },
+          { status: 500 }
+        )
+      }
+      // Unknown write failure: surface the sanitized database message so the
+      // UI shows the real cause instead of a blind generic error.
+      return NextResponse.json(
+        { error: 'Failed to create appointment.', details: toSafeDetail(msg) },
+        { status: 500 }
+      )
     }
   }
 
