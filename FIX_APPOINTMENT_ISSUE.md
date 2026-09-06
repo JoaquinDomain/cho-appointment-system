@@ -133,6 +133,31 @@ After applying the fix:
 - **Keep API tokens secure** and rotate them if exposed
 - **Use separate databases** for development and production
 
+## Separate Deployments Configuration
+
+Since you have separate Vercel deployments:
+
+### Patient Site: https://cho-appointment-system-orgqvymaz-dental-clinic-team.vercel.app
+**Vercel Environment Variables:**
+```env
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_D1_DATABASE_ID=f4a497a9-671f-4d61-84b4-08f525886809
+CLOUDFLARE_D1_API_TOKEN=your-d1-api-token
+# DO NOT set NEXT_PUBLIC_APP_MODE (leave unset)
+```
+
+### Admin Site: https://cho-admin-portal-git-main-dental-clinic-team.vercel.app/admin
+**Vercel Environment Variables:**
+```env
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_D1_DATABASE_ID=f4a497a9-671f-4d61-84b4-08f525886809
+CLOUDFLARE_D1_API_TOKEN=your-d1-api-token
+NEXT_PUBLIC_APP_MODE=admin
+NEXT_PUBLIC_PATIENT_SITE_URL=https://cho-appointment-system-orgqvymaz-dental-clinic-team.vercel.app
+```
+
+**CRITICAL:** Both deployments must use the SAME Cloudflare D1 database credentials so they share the same data!
+
 ## Troubleshooting
 
 If appointments still don't appear after fixing credentials:
