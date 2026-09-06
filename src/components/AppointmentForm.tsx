@@ -38,6 +38,7 @@ export default function AppointmentForm() {
   })
 
   const [testCounts, setTestCounts] = useState<Record<string, number>>({})
+  const [quotasLoaded, setQuotasLoaded] = useState(false)
   const [loadingQuotas, setLoadingQuotas] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
@@ -50,20 +51,26 @@ export default function AppointmentForm() {
 
     if (!date) {
       queueMicrotask(() => {
-        if (!ignore) setTestCounts({})
+        if (!ignore) {
+          setTestCounts({})
+          setQuotasLoaded(false)
+        }
       })
       return
     }
 
     async function loadQuotas() {
       setLoadingQuotas(true)
+      // Counts below belong to the previous date until this fetch lands.
+      if (!ignore) setQuotasLoaded(false)
       try {
-        const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`)
+        const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`, { cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           if (!ignore) {
             const newCounts: Record<string, number> = data.counts || {}
             setTestCounts(newCounts)
+            setQuotasLoaded(true)
 
             // Deselect any tests that are fully booked for the chosen date
             const testConfigs = Object.values(TEST_CONFIG)
@@ -344,8 +351,11 @@ export default function AppointmentForm() {
             {testConfigs.map(config => {
               const test = config.label
               const limit = config.limit
-              const bookedCount = testCounts[test] || 0
-              const isFullyBooked = Boolean(formData.appointmentDate) && bookedCount >= limit
+              // Only trust counts actually loaded for the selected date —
+              // never display a "0 booked" that is just missing data.
+              const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
+              const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
+              const isFullyBooked = hasQuotaData && bookedCount >= limit
               const checked = formData.selectedTests.includes(test)
 
               return (
@@ -372,7 +382,7 @@ export default function AppointmentForm() {
                         {test}
                       </span>
                       <span className="text-[11px] text-gray-500 font-normal">
-                        {formData.appointmentDate
+                        {hasQuotaData
                           ? `${bookedCount} / ${limit} booked`
                           : `Daily Limit: ${limit}`}
                       </span>

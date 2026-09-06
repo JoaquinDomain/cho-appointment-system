@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [quotaDate, setQuotaDate] = useState(() => todayLocal())
   const [quotaCounts, setQuotaCounts] = useState<Record<string, number>>({})
   const [quotaLoading, setQuotaLoading] = useState(false)
+  const [quotaError, setQuotaError] = useState('')
 
   // Server-side paginated + filtered list via admin-only API.
   // No direct database read from the browser; session cookie authenticates.
@@ -111,12 +112,20 @@ export default function AdminDashboard() {
   const fetchQuotas = useCallback(async (date: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return
     setQuotaLoading(true)
+    setQuotaError('')
     try {
-      const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`, { credentials: 'same-origin' })
+      const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
       const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        // Keep the last good counts — never present a failed load as zeros.
+        throw new Error((json as { error?: string }).error ?? 'Failed to fetch quota data')
+      }
       setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
-    } catch {
-      setQuotaCounts({})
+    } catch (err) {
+      setQuotaError(err instanceof Error ? err.message : 'Failed to fetch quota data')
     } finally {
       setQuotaLoading(false)
     }
@@ -478,7 +487,8 @@ export default function AdminDashboard() {
                 onChange={(e) => setQuotaDate(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white"
               />
-              {quotaLoading && <span className="text-sm text-gray-500">Loading…</span>}
+                {quotaLoading && <span className="text-sm text-gray-500">Loading…</span>}
+                {quotaError && <span className="text-sm text-red-700">{quotaError}</span>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {

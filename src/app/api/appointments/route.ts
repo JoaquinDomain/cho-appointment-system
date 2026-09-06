@@ -8,6 +8,7 @@ import { TEST_CONFIG } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
+import { countBookedTests, type QuotaRow } from '@/lib/quota-count'
 
 // POST /api/appointments — public booking: validated + quota-checked +
 // rate-limited. The server generates the UUID (client `id`, if any, ignored).
@@ -33,12 +34,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
 
-  let existing: Array<{ selected_tests: string }>
+  let existing: QuotaRow[]
   try {
-    existing = await d1Query<{ selected_tests: string }>(
-      'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
-      [parsed.data.appointment_date]
-    )
+    // Status-aware read so cancelled bookings free their slot.
+    // Pre-migration databases lack the column — fall back to the legacy read.
+    try {
+      existing = await d1Query<QuotaRow>(
+        'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
+        [parsed.data.appointment_date]
+      )
+    } catch (e) {
+      if (!isMissingStatusColumn(e instanceof Error ? e.message : '')) throw e
+      existing = await d1Query<QuotaRow>(
+        'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
+        [parsed.data.appointment_date]
+      )
+    }
   } catch (e) {
     console.error('Quota check failed:', e)
     const msg = e instanceof Error ? e.message : ''
@@ -55,19 +66,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
-  const counts: Record<string, number> = {}
-  for (const appt of existing) {
-    try {
-      const tests: unknown = JSON.parse(appt.selected_tests)
-      if (Array.isArray(tests)) {
-        for (const t of tests) {
-          if (typeof t === 'string') counts[t] = (counts[t] || 0) + 1
-        }
-      }
-    } catch {
-      // Ignore malformed rows when counting.
-    }
-  }
+  // Same counting rules as the public quotas API (see lib/quota-count).
+  const counts = countBookedTests(existing)
 
   const testConfigs = Object.values(TEST_CONFIG)
   const overLimit: string[] = []
