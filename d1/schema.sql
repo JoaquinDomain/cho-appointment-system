@@ -1,6 +1,9 @@
 -- CHO Laboratory Appointment System — Cloudflare D1 schema (SQLite)
 -- Apply with: npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql
 -- Fresh start: tables are created empty. Admins are seeded via scripts/seed-admin.mjs.
+-- Existing databases (created before the status workflow): CREATE TABLE IF NOT
+-- EXISTS will NOT add new columns, so also apply:
+--   npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql
 
 CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,

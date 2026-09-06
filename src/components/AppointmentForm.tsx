@@ -123,9 +123,12 @@ export default function AppointmentForm() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const details = Array.isArray((json as { details?: string[] }).details)
-          ? `: ${(json as { details: string[] }).details.slice(0, 2).join(' ')}`
-          : ''
+        const rawDetails = (json as { details?: unknown }).details
+        const details = Array.isArray(rawDetails)
+          ? `: ${rawDetails.slice(0, 2).join(' ')}`
+          : typeof rawDetails === 'string' && rawDetails
+            ? `: ${rawDetails}`
+            : ''
         throw new Error(`${(json as { error?: string }).error ?? 'Submit failed'}${details}`)
       }
       // Server-generated UUID (never trust a client-made ID).

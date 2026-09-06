@@ -39,6 +39,17 @@ export async function POST(req: Request) {
     )
   } catch (e) {
     console.error('Quota check failed:', e)
+    const msg = e instanceof Error ? e.message : ''
+    if (/Missing D1 env/i.test(msg)) {
+      return NextResponse.json(
+        {
+          error: 'Failed to validate test quotas.',
+          details:
+            'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.',
+        },
+        { status: 500 }
+      )
+    }
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
@@ -75,30 +86,73 @@ export async function POST(req: Request) {
 
   const id = randomUUID()
   const createdAt = new Date().toISOString()
+  const params = [
+    id,
+    parsed.data.patient_name,
+    parsed.data.age,
+    parsed.data.consultation_facility,
+    parsed.data.yakap_registered ? 1 : 0,
+    parsed.data.yakap_facility,
+    JSON.stringify(parsed.data.selected_tests),
+    parsed.data.appointment_date,
+    createdAt,
+  ]
   try {
     await d1Run(
       `INSERT INTO appointments
         (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
-      [
-        id,
-        parsed.data.patient_name,
-        parsed.data.age,
-        parsed.data.consultation_facility,
-        parsed.data.yakap_registered ? 1 : 0,
-        parsed.data.yakap_facility,
-        JSON.stringify(parsed.data.selected_tests),
-        parsed.data.appointment_date,
-        createdAt,
-      ]
+      params
     )
   } catch (e) {
-    console.error('Booking insert failed:', e)
     const msg = e instanceof Error ? e.message : ''
-    if (/CHECK|constraint/i.test(msg)) {
-      return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
+    // Databases created before the status-workflow migration lack the
+    // `status` column (CREATE TABLE IF NOT EXISTS never backfills it).
+    // Retry the legacy shape so booking still succeeds, and log the
+    // one-line remediation for the operator.
+    if (/no such column:\s*status/i.test(msg)) {
+      console.warn(
+        'appointments.status column missing — booking with legacy schema. ' +
+          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql'
+      )
+      try {
+        await d1Run(
+          `INSERT INTO appointments
+            (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          params
+        )
+      } catch (retryErr) {
+        console.error('Booking insert failed (legacy retry):', retryErr)
+        return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
+      }
+    } else {
+      console.error('Booking insert failed:', e)
+      if (/CHECK|constraint/i.test(msg)) {
+        return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
+      }
+      if (/no such table/i.test(msg)) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create appointment.',
+            details:
+              'Appointments table not found. Apply the database schema: npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql',
+          },
+          { status: 500 }
+        )
+      }
+      if (/Missing D1 env/i.test(msg)) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create appointment.',
+            details:
+              'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.',
+          },
+          { status: 500 }
+        )
+      }
+      return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
     }
-    return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, id }, { status: 201 })
