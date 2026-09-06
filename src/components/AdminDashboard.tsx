@@ -493,13 +493,14 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
                 const booked = quotaCounts[t.label] ?? 0
+                const available = t.limit - booked
                 const pct = Math.min(100, Math.round((booked / t.limit) * 100))
                 const full = booked >= t.limit
                 return (
                   <div key={t.label} className={`p-3 rounded-xl border ${full ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-gray-900">{t.label}</span>
-                      <span className={full ? 'text-red-700 font-semibold' : 'text-gray-600'}>{booked}/{t.limit}{full ? ' FULL' : ''}</span>
+                      <span className={full ? 'text-red-700 font-semibold' : 'text-gray-600'}>{available}/{t.limit}{full ? ' FULL' : ''}</span>
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
                       <div className={`h-full ${full ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />

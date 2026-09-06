@@ -354,6 +354,7 @@ export default function AppointmentForm() {
               // Only trust counts actually loaded for the selected date —
               // never display a "0 booked" that is just missing data.
               const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
+              const availableCount = limit - bookedCount
               const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
               const isFullyBooked = hasQuotaData && bookedCount >= limit
               const checked = formData.selectedTests.includes(test)
@@ -383,7 +384,7 @@ export default function AppointmentForm() {
                       </span>
                       <span className="text-[11px] text-gray-500 font-normal">
                         {hasQuotaData
-                          ? `${bookedCount} / ${limit} booked`
+                          ? `${availableCount} / ${limit} available`
                           : `Daily Limit: ${limit}`}
                       </span>
                     </div>
