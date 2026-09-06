@@ -120,9 +120,11 @@ export async function POST(req: Request) {
     const msg = e instanceof Error ? e.message : ''
     // Databases created before the status-workflow migration lack the
     // `status` column (CREATE TABLE IF NOT EXISTS never backfills it).
+    // D1/SQLite phrases this as "no such column: status" or
+    // "table appointments has no column named status" — handle both.
     // Retry the legacy shape so booking still succeeds, and log the
     // one-line remediation for the operator.
-    if (/no such column:\s*status/i.test(msg)) {
+    if (/no\s+(such\s+column|column named)\s*:?\s*status/i.test(msg)) {
       console.warn(
         'appointments.status column missing — booking with legacy schema. ' +
           'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql'

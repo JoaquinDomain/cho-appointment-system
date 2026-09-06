@@ -125,11 +125,14 @@ export default function AppointmentForm() {
       if (!res.ok) {
         const rawDetails = (json as { details?: unknown }).details
         const details = Array.isArray(rawDetails)
-          ? `: ${rawDetails.slice(0, 2).join(' ')}`
+          ? rawDetails.slice(0, 2).join(' ')
           : typeof rawDetails === 'string' && rawDetails
-            ? `: ${rawDetails}`
+            ? rawDetails
             : ''
-        throw new Error(`${(json as { error?: string }).error ?? 'Submit failed'}${details}`)
+        const base = (json as { error?: string }).error ?? 'Submit failed'
+        // Avoid "appointment.: detail" — use a space when base ends with '.'.
+        const sep = details ? (base.endsWith('.') ? ' ' : ': ') : ''
+        throw new Error(`${base}${sep}${details}`)
       }
       // Server-generated UUID (never trust a client-made ID).
       setQrCodeId((json as { id: string }).id)
