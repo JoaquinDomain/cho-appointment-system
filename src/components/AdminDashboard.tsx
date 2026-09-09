@@ -521,7 +521,7 @@ export default function AdminDashboard() {
                           Online Full
                         </span>
                       ) : (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums">
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums">
                           {onlineAvailable} online left
                         </span>
                       )}

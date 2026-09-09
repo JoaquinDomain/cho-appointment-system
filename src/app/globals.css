@@ -61,13 +61,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.45);
   }
   70% {
-    box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 14px rgba(2, 132, 199, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0);
   }
 }
 

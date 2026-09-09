@@ -46,7 +46,7 @@ function StepCard({
       <div className="flex items-center gap-3 px-5 pt-4 pb-3.5 border-b border-slate-100">
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-            done ? 'bg-emerald-600 text-white' : 'bg-sky-950 text-white'
+            done ? 'bg-sky-600 text-white' : 'bg-sky-950 text-white'
           }`}
         >
           {done ? <Check className="w-4 h-4" /> : step}
@@ -342,12 +342,12 @@ export default function AppointmentForm() {
   if (submitSuccess) {
     return (
       <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden animate-fade-up">
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 px-6 sm:px-8 py-8 text-center text-white">
+        <div className="bg-gradient-to-br from-sky-800 to-cyan-600 px-6 sm:px-8 py-8 text-center text-white">
           <div className="mx-auto w-16 h-16 bg-white/20 border border-white/30 rounded-full flex items-center justify-center mb-3 animate-pulse-ring">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight">Appointment Confirmed</h2>
-          <p className="text-emerald-50 text-sm mt-1">
+          <p className="text-sky-50 text-sm mt-1">
             {formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.
           </p>
         </div>
@@ -682,7 +682,7 @@ export default function AppointmentForm() {
                     {hasQuotaData && !isFullyBooked && (
                       <div className="h-1.5 rounded-full bg-slate-200/80 overflow-hidden" aria-hidden="true">
                         <div
-                          className={`h-full rounded-full ${pct <= 20 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          className={`h-full rounded-full ${pct <= 20 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-sky-600'}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
