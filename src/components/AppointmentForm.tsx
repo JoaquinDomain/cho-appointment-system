@@ -40,6 +40,7 @@ export default function AppointmentForm() {
   const [testCounts, setTestCounts] = useState<Record<string, number>>({})
   const [quotasLoaded, setQuotasLoaded] = useState(false)
   const [loadingQuotas, setLoadingQuotas] = useState(false)
+  const [quotaVersion, setQuotaVersion] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -105,7 +106,7 @@ export default function AppointmentForm() {
     return () => {
       ignore = true
     }
-  }, [formData.appointmentDate])
+  }, [formData.appointmentDate, quotaVersion])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,6 +144,16 @@ export default function AppointmentForm() {
       }
       // Server-generated UUID (never trust a client-made ID).
       setQrCodeId((json as { id: string }).id)
+      // Optimistically decrement availability for every booked test so the
+      // UI reflects the new booking immediately (99 / 100 after 1 CBC, etc).
+      // The quota effect refetches from the server when returning to the form.
+      setTestCounts(prev => {
+        const next = { ...prev }
+        for (const t of formData.selectedTests) {
+          next[t] = (next[t] || 0) + 1
+        }
+        return next
+      })
       setSubmitSuccess(true)
     } catch (error: unknown) {
       console.error('Error submitting appointment:', error)
@@ -186,15 +197,19 @@ export default function AppointmentForm() {
           <button
             onClick={() => {
               setSubmitSuccess(false)
-              setFormData({
+              // Keep the booked date so the user immediately sees the updated
+              // availability (e.g. 99 / 100) instead of the base daily limit.
+              // Bump quotaVersion to refetch authoritative counts from server.
+              setFormData(prev => ({
                 fullName: '',
                 age: '',
                 healthFacility: '',
                 yakapRegistered: false,
                 yakapFacility: '',
                 selectedTests: [],
-                appointmentDate: ''
-              })
+                appointmentDate: prev.appointmentDate
+              }))
+              setQuotaVersion(v => v + 1)
               setQrCodeId('')
             }}
             className="mt-6 w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all hover:shadow-lg hover:shadow-blue-300/50 font-semibold"
