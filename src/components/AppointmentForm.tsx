@@ -403,10 +403,27 @@ export default function AppointmentForm() {
         {/* Fasting Warning */}
         {requiresFasting && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-            <p className="text-sm text-red-800 font-medium">
-              <AlertCircle className="inline w-4 h-4 mr-1" />
-              10–12 Hours Fasting is required prior to your test.
-            </p>
+            {formData.selectedTests.includes(TEST_CONFIG.lipid_profile.label) ? (
+              <div className="text-sm text-red-800">
+                <p className="font-bold underline underline-offset-2">
+                  <AlertCircle className="inline w-4 h-4 mr-1" />
+                  LIPID PROFILE only
+                </p>
+                <ul className="mt-2 space-y-1 font-medium">
+                  <li>8:00 PM – DINNER (PANYAPON)</li>
+                  <li>9:00 PM – LAST MEAL (ULIHI NGA KA-ON)</li>
+                </ul>
+                <p className="mt-2 font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
+                <p className="italic">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
+                <p className="mt-2 font-bold">COME BACK 8:00 AM THE NEXT WORKING DAY</p>
+                <p className="italic">(BALIK SA LABORATORY SA 8:00 SG AGA)</p>
+              </div>
+            ) : (
+              <p className="text-sm text-red-800 font-medium">
+                <AlertCircle className="inline w-4 h-4 mr-1" />
+                10–12 Hours Fasting is required prior to your test.
+              </p>
+            )}
           </div>
         )}
 
