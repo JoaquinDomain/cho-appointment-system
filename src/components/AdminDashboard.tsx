@@ -496,21 +496,29 @@ export default function AdminDashboard() {
                 // Total capacity vs online share (half held for walk-ins).
                 const onlineLimit = onlineLimitFor(t.limit)
                 const onlineAvailable = Math.max(0, onlineLimit - booked)
-                const available = t.limit - booked
-                const pct = Math.min(100, Math.round((available / t.limit) * 100))
+                const available = Math.max(0, t.limit - booked)
+                const held = t.limit - onlineLimit
+                const pct = onlineLimit > 0 ? Math.round((onlineAvailable / onlineLimit) * 100) : 0
                 const onlineFull = onlineAvailable <= 0
-                const full = available <= 0
                 return (
-                  <div key={t.label} className={`p-3 rounded-xl border ${onlineFull ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium text-gray-900">{t.label}</span>
-                      <span className={onlineFull ? 'text-red-700 font-semibold' : 'text-gray-600'}>{available}/{t.limit}{onlineFull ? ' ONLINE FULL' : full ? ' FULL' : ''}</span>
+                  <div key={t.label} className={`p-3 rounded-xl border ${onlineFull ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-medium text-gray-900 truncate">{t.label}</span>
+                      {onlineFull ? (
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
+                          Online Full
+                        </span>
+                      ) : (
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {onlineAvailable} online left
+                        </span>
+                      )}
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      Online: {onlineAvailable}/{onlineLimit} left · {t.limit - onlineLimit} held for walk-in
+                    <div className="mt-1.5 text-xs text-gray-500">
+                      Total {available}/{t.limit} left. {held} held for walk in.
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div className={`h-full ${onlineFull ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-full rounded-full ${onlineFull ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )

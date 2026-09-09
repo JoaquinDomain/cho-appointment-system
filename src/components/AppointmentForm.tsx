@@ -120,7 +120,7 @@ export default function AppointmentForm() {
       })
       if (full.length > 0) {
         setSubmitError(
-          `Online slots for this day are full: ${full.join(', ')}. Half of daily capacity is reserved for walk-ins — please select another day.`
+          `Online slots for this day are full: ${full.join(', ')}. Half of daily capacity is reserved for walk-ins. Please select another day.`
         )
         return
       }
@@ -375,8 +375,8 @@ export default function AppointmentForm() {
         <section>
           <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
           <p className="text-xs text-gray-500 mb-3">
-            Half of daily slots are reserved for walk-ins. Online slots per day are shown below —
-            if a test is fully booked, please select another day.
+            Half of daily slots are reserved for walk-ins. Online slots per day are shown below.
+            If a test is fully booked, please select another day.
           </p>
           {loadingQuotas && (
             <p className="text-xs text-blue-600 mb-3 animate-pulse">Checking test availability for selected date...</p>
@@ -426,7 +426,7 @@ export default function AppointmentForm() {
                   </div>
                   {isFullyBooked && (
                     <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
-                      Fully Booked — pick another day
+                      Fully Booked: pick another day
                     </span>
                   )}
                 </label>
