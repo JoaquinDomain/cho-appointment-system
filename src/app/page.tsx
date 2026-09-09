@@ -34,19 +34,9 @@ export default function Home() {
             </span>
           </div>
         </div>
-
-        <svg
-          className="relative block w-full text-sky-100"
-          viewBox="0 0 1440 64"
-          preserveAspectRatio="none"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M0,32 C240,64 480,0 720,16 C960,32 1200,64 1440,32 L1440,64 L0,64 Z" />
-        </svg>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 -mt-2 pb-12">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 mt-6 pb-12">
         <div className="animate-fade-up">
           <AppointmentForm />
         </div>
