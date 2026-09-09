@@ -83,8 +83,8 @@ export default function AdminApp() {
             <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-400/40">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">CHO Admin Portal</h1>
-            <p className="text-gray-500 text-sm">Laboratory Appointment Management</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-1">CHO Admin Portal</h1>
+            <p className="text-slate-500 text-sm">City Health Office &middot; Bacolod City</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -126,7 +126,20 @@ export default function AdminApp() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
+          <ul className="mt-6 grid grid-cols-3 gap-2 text-center">
+            {[
+              { icon: QrCode, label: 'QR check-in' },
+              { icon: LayoutDashboard, label: 'Daily quotas' },
+              { icon: ShieldCheck, label: 'Records' },
+            ].map(f => (
+              <li key={f.label} className="rounded-xl bg-slate-50 border border-slate-200 px-2 py-2.5">
+                <f.icon className="w-4 h-4 mx-auto text-indigo-600" />
+                <p className="text-[11px] font-semibold text-slate-600 mt-1">{f.label}</p>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-4 text-center text-xs text-slate-400">
             Authorized CHO staff only
           </p>
         </div>
@@ -136,13 +149,16 @@ export default function AdminApp() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-sm">
+      <div className="bg-slate-950 text-white px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-300/50">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900">CHO Admin Portal</h1>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold leading-tight">CHO Admin Portal</h1>
+              <p className="text-[11px] text-slate-400 leading-tight">City Health Office &middot; Bacolod City</p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -154,7 +170,7 @@ export default function AdminApp() {
             </button>
             <button
               onClick={handleLogout}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-gray-700 text-white text-sm rounded-xl hover:bg-gray-800 transition-colors"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/20 transition-colors border border-white/10"
             >
               <LogOut className="w-4 h-4" />
               Logout

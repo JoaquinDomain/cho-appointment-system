@@ -391,17 +391,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-500 text-sm sm:text-base">CHO Laboratory Appointment Management</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">City Health Office &middot; Bacolod City</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-0.5">Admin Dashboard</h1>
+            <p className="text-slate-500 text-sm sm:text-base">Laboratory appointments, quotas, and QR check-ins</p>
           </div>
           <button
             onClick={() => setShowScanner(!showScanner)}
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all hover:shadow-md hover:shadow-blue-300/50 font-medium"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-md font-semibold"
           >
             <Scan className="w-5 h-5 mr-2" />
             {showScanner ? 'Close Scanner' : 'Scan QR Code'}
@@ -410,35 +411,38 @@ export default function AdminDashboard() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-300/40">
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-xs sm:text-sm font-medium">Total Appointments</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.total}</p>
+                <p className="text-sky-200 text-xs sm:text-sm font-medium">Total Appointments</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.total}</p>
+                <p className="text-sky-300/80 text-[11px] mt-0.5">Across all dates</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
                 <Users className="w-6 h-6" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-600 to-indigo-500 text-white shadow-lg shadow-violet-300/40">
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-violet-100 text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.today}</p>
+                <p className="text-violet-200 text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.today}</p>
+                <p className="text-violet-300/80 text-[11px] mt-0.5">Scheduled for today</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
                 <CalendarCheck className="w-6 h-6" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-300/40">
+          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100 text-xs sm:text-sm font-medium">YAKAP Registered</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1">{stats.yakap}</p>
+                <p className="text-emerald-200 text-xs sm:text-sm font-medium">YAKAP Registered</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.yakap}</p>
+                <p className="text-emerald-300/80 text-[11px] mt-0.5">PhilHealth YAKAP members</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
                 <HeartHandshake className="w-6 h-6" />
               </div>
             </div>
@@ -462,14 +466,15 @@ export default function AdminDashboard() {
           <button
             onClick={handleExportCsv}
             disabled={exporting}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm rounded-xl hover:bg-gray-700 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-60 transition-colors"
           >
             <Download className="w-4 h-4" />
             {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
           <button
             onClick={() => setShowQuotas(v => !v)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-sm rounded-xl hover:bg-gray-50"
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${showQuotas ? 'bg-sky-950 text-white border-sky-950' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+            aria-expanded={showQuotas}
           >
             <BarChart3 className="w-4 h-4" />
             {showQuotas ? 'Hide Quotas' : 'Daily Quotas'}
@@ -478,18 +483,25 @@ export default function AdminDashboard() {
 
         {/* Daily quotas */}
         {showQuotas && (
-          <div className="bg-white rounded-2xl shadow p-4 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-              <label className="text-sm font-medium text-gray-700">Quota date</label>
-              <input
-                type="date"
-                value={quotaDate}
-                onChange={(e) => setQuotaDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white"
-              />
-                {quotaLoading && <span className="text-sm text-gray-500">Loading…</span>}
-                {quotaError && <span className="text-sm text-red-700">{quotaError}</span>}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Online capacity by test</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Half of each test&apos;s daily slots are held for walk-ins. Bars show online slots remaining.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="quota-date" className="text-sm font-medium text-slate-700">Quota date</label>
+                <input
+                  id="quota-date"
+                  type="date"
+                  value={quotaDate}
+                  onChange={(e) => setQuotaDate(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-xl text-slate-900 bg-white text-sm shadow-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                />
+              </div>
             </div>
+            {quotaLoading && <p className="text-sm text-slate-500 mb-2 animate-pulse">Loading quotas...</p>}
+            {quotaError && <p className="text-sm text-red-700 mb-2">{quotaError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
                 const booked = quotaCounts[t.label] ?? 0
@@ -501,24 +513,24 @@ export default function AdminDashboard() {
                 const pct = onlineLimit > 0 ? Math.round((onlineAvailable / onlineLimit) * 100) : 0
                 const onlineFull = onlineAvailable <= 0
                 return (
-                  <div key={t.label} className={`p-3 rounded-xl border ${onlineFull ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
+                  <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'}`}>
                     <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-medium text-gray-900 truncate">{t.label}</span>
+                      <span className="font-semibold text-slate-900 truncate" title={t.label}>{t.label}</span>
                       {onlineFull ? (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white">
                           Online Full
                         </span>
                       ) : (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums">
                           {onlineAvailable} online left
                         </span>
                       )}
                     </div>
-                    <div className="mt-1.5 text-xs text-gray-500">
+                    <div className="mt-1.5 text-xs text-slate-500 tabular-nums">
                       Total {available}/{t.limit} left. {held} held for walk in.
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div className={`h-full rounded-full ${onlineFull ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                    <div className="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-red-500' : pct <= 25 ? 'bg-amber-500' : 'bg-sky-600'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )
@@ -528,7 +540,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-2xl shadow p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -576,47 +588,63 @@ export default function AdminDashboard() {
               </select>
             </div>
           </div>
-          {(dateFilter || statusFilter) && (
-            <div className="mt-3 flex flex-wrap gap-2">
+          {(dateFilter || statusFilter || searchTerm.trim() || facilityFilter) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {searchTerm.trim() && (
+                <button onClick={() => { setPage(1); setSearchTerm('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200">
+                  Search &ldquo;{searchTerm.trim()}&rdquo; ✕
+                </button>
+              )}
+              {facilityFilter && (
+                <button onClick={() => { setPage(1); setFacilityFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 max-w-full truncate">
+                  {facilityFilter} ✕
+                </button>
+              )}
               {dateFilter && (
-                <button onClick={() => { setPage(1); setDateFilter('') }} className="text-xs px-3 py-1.5 bg-gray-100 rounded-full hover:bg-gray-200">
+                <button onClick={() => { setPage(1); setDateFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200">
                   Date {dateFilter} ✕
                 </button>
               )}
               {statusFilter && (
-                <button onClick={() => { setPage(1); setStatusFilter('') }} className="text-xs px-3 py-1.5 bg-gray-100 rounded-full hover:bg-gray-200">
+                <button onClick={() => { setPage(1); setStatusFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 capitalize">
                   Status {statusFilter} ✕
                 </button>
               )}
               <button
                 onClick={() => { setPage(1); setDateFilter(todayLocal()) }}
-                className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100"
+                className="text-xs px-3 py-1.5 bg-sky-50 text-sky-800 font-semibold rounded-full hover:bg-sky-100"
               >
                 Today
               </button>
+              <button
+                onClick={() => { setPage(1); setSearchTerm(''); setFacilityFilter(''); setDateFilter(''); setStatusFilter('') }}
+                className="text-xs px-3 py-1.5 text-slate-500 hover:text-slate-800 underline underline-offset-2"
+              >
+                Clear all
+              </button>
             </div>
           )}
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-600">
-            <span>Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-slate-600">
+            <span className="tabular-nums">Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
             <span className="inline-flex gap-2">
               <button
                 onClick={() => { void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter) }}
                 disabled={loading}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
               >
                 {loading ? 'Loading…' : 'Refresh'}
               </button>
               <button
                 onClick={() => setPage(p => Math.max(p - 1, 1))}
                 disabled={page <= 1 || loading}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
               >
                 Prev
               </button>
               <button
                 onClick={() => setPage(p => (filteredAppointments.length === PAGE_SIZE ? p + 1 : p))}
                 disabled={filteredAppointments.length < PAGE_SIZE || loading}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
               >
                 Next
               </button>
@@ -627,17 +655,18 @@ export default function AdminDashboard() {
         {/* Appointments: cards on mobile */}
         <div className="space-y-3 md:hidden">
           {filteredAppointments.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow p-8 text-center text-gray-500">
-              No appointments found matching your criteria
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+              <p className="font-semibold text-slate-700">No appointments found</p>
+              <p className="text-sm text-slate-500 mt-0.5">Try adjusting your search or filters.</p>
             </div>
           ) : (
             filteredAppointments.map((appointment) => (
-              <div key={appointment.id} className="bg-white rounded-2xl shadow p-4">
+              <div key={appointment.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <div>
                     <button
                       onClick={() => openDetails(appointment)}
-                      className="font-semibold text-blue-700 underline underline-offset-2 text-left"
+                      className="font-semibold text-sky-800 underline underline-offset-2 decoration-sky-300 text-left"
                     >
                       {appointment.patient_name}
                     </button>
@@ -687,10 +716,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* Appointments Table (desktop) */}
-        <div className="hidden md:block bg-white rounded-2xl shadow overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="slim-scroll overflow-auto max-h-[68vh]">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-50 sticky top-0 z-[1] shadow-[0_1px_0_0_#e2e8f0]">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <User className="inline w-4 h-4 mr-1" />
@@ -728,17 +757,18 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                      No appointments found matching your criteria
+                    <td colSpan={9} className="px-6 py-12 text-center">
+                      <p className="font-semibold text-slate-700">No appointments found</p>
+                      <p className="text-sm text-slate-500 mt-0.5">Try adjusting your search or filters.</p>
                     </td>
                   </tr>
                 ) : (
                   filteredAppointments.map((appointment) => (
-                    <tr key={appointment.id} className="hover:bg-gray-50">
+                    <tr key={appointment.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-sky-50/70 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => openDetails(appointment)}
-                          className="text-sm font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                          className="text-sm font-semibold text-sky-800 underline underline-offset-2 decoration-sky-300 hover:text-sky-950"
                         >
                           {appointment.patient_name}
                         </button>
@@ -792,13 +822,18 @@ export default function AdminDashboard() {
             onClick={closeDetails}
           >
             <div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/10 w-full max-w-lg max-h-[90vh] overflow-y-auto slim-scroll animate-fade-up"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between p-5 border-b border-gray-100">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedAppointment.patient_name}</h2>
-                  <p className="text-sm text-gray-500">Appointment Details</p>
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100 bg-slate-50/60 rounded-t-2xl">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-extrabold tracking-tight text-slate-900 break-words">{selectedAppointment.patient_name}</h2>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${STATUS_STYLES[selectedAppointment.status]}`}>
+                      {selectedAppointment.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-0.5">Appointment Details</p>
                 </div>
                 <button
                   onClick={closeDetails}

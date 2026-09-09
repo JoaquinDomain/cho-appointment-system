@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Calendar, User, MapPin, AlertCircle, CheckCircle, Download, FlaskConical, HeartHandshake } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Calendar, User, MapPin, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitFor } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 
@@ -15,13 +15,143 @@ interface FormData {
   appointmentDate: string
 }
 
-function SectionHeading({ icon, title, tone }: { icon: React.ReactNode; title: string; tone: string }) {
+const FIELD_CLASS =
+  'w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 bg-white shadow-sm outline-none transition focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+
+function prettyDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function StepCard({
+  step,
+  title,
+  subtitle,
+  done,
+  children,
+}: {
+  step: string
+  title: string
+  subtitle: string
+  done: boolean
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex items-center gap-2.5 mb-3">
-      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${tone} text-white flex items-center justify-center shadow-md`}>
-        {icon}
+    <section className="bg-white rounded-2xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-hidden">
+      <div className="flex items-center gap-3 px-5 pt-4 pb-3.5 border-b border-slate-100">
+        <div
+          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
+            done ? 'bg-emerald-600 text-white' : 'bg-sky-950 text-white'
+          }`}
+        >
+          {done ? <Check className="w-4 h-4" /> : step}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[13px] font-bold text-slate-900 uppercase tracking-wider">{title}</h2>
+          <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+        </div>
       </div>
-      <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">{title}</h2>
+      <div className="p-5">{children}</div>
+    </section>
+  )
+}
+
+function FastingGuide({
+  title,
+  rows,
+  comeback,
+  comebackSub,
+}: {
+  title: string
+  rows: { time: string; desc: string }[]
+  comeback: string
+  comebackSub: string
+}) {
+  return (
+    <div className="text-sm text-red-900">
+      <p className="flex items-center gap-1.5 font-bold uppercase tracking-wide">
+        <AlertCircle className="w-4 h-4 shrink-0" />
+        {title}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {rows.map(r => (
+          <li key={r.time} className="flex items-center gap-2.5">
+            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-bold tabular-nums">
+              {r.time}
+            </span>
+            <span className="font-medium">{r.desc}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 rounded-xl bg-red-600/10 border border-red-200 px-3 py-2.5">
+        <p className="font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
+        <p className="italic text-red-800">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
+      </div>
+      <p className="mt-3 font-bold">{comeback}</p>
+      <p className="italic text-red-800">({comebackSub})</p>
+    </div>
+  )
+}
+
+function FastingNotice({ selectedTests }: { selectedTests: string[] }) {
+  const hasLipid = selectedTests.includes(TEST_CONFIG.lipid_profile.label)
+  const hasFbs = selectedTests.includes(TEST_CONFIG.fbs.label)
+  let body: React.ReactNode
+  if (hasLipid && hasFbs) {
+    body = (
+      <FastingGuide
+        title="Lipid Profile with FBS"
+        rows={[
+          { time: '6-7 PM', desc: 'DINNER (PANYAPON)' },
+          { time: '9:00 PM', desc: 'LAST MEAL (ULIHI NGA KA-ON)' },
+        ]}
+        comeback="COME BACK 7:00 AM THE NEXT WORKING DAY"
+        comebackSub="BALIK SA LABORATORY SA 7:00 SG AGA"
+      />
+    )
+  } else if (hasLipid) {
+    body = (
+      <FastingGuide
+        title="Lipid Profile only"
+        rows={[
+          { time: '8:00 PM', desc: 'DINNER (PANYAPON)' },
+          { time: '9:00 PM', desc: 'LAST MEAL (ULIHI NGA KA-ON)' },
+        ]}
+        comeback="COME BACK 8:00 AM THE NEXT WORKING DAY"
+        comebackSub="BALIK SA LABORATORY SA 8:00 SG AGA"
+      />
+    )
+  } else if (hasFbs) {
+    body = (
+      <FastingGuide
+        title="FBS only"
+        rows={[
+          { time: '6-8 PM', desc: 'DINNER (PANYAPON)' },
+          { time: '1:00 AM', desc: 'SNACKS GID (ULIHI NGA KA-ON)' },
+        ]}
+        comeback="COME BACK 7:00 AM THE NEXT WORKING DAY"
+        comebackSub="BALIK SA LABORATORY SA 7:00 SG AGA"
+      />
+    )
+  } else {
+    body = (
+      <p className="text-sm text-red-900 font-medium">
+        <AlertCircle className="inline w-4 h-4 mr-1" />
+        10–12 Hours Fasting is required prior to your test.
+      </p>
+    )
+  }
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 shadow-sm">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-red-500 mb-2">
+        Fasting instructions. Please read carefully
+      </p>
+      {body}
     </div>
   )
 }
@@ -45,6 +175,7 @@ export default function AppointmentForm() {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [qrCodeId, setQrCodeId] = useState('')
+  const [testSearch, setTestSearch] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -160,7 +291,7 @@ export default function AppointmentForm() {
       // Server-generated UUID (never trust a client-made ID).
       setQrCodeId((json as { id: string }).id)
       // Optimistically decrement availability for every booked test so the
-      // UI reflects the new booking immediately (99 / 100 after 1 CBC, etc).
+      // UI reflects the new booking immediately.
       // The quota effect refetches from the server when returning to the form.
       setTestCounts(prev => {
         const next = { ...prev }
@@ -193,27 +324,82 @@ export default function AppointmentForm() {
     (FASTING_REQUIRED_TESTS as readonly string[]).includes(test)
   )
 
+  const testConfigs = Object.values(TEST_CONFIG)
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+
+  const stepsDone = [
+    formData.fullName.trim().length >= 2 && formData.age !== '',
+    formData.appointmentDate !== '' && formData.healthFacility !== '',
+    true,
+    formData.selectedTests.length > 0,
+  ]
+  const doneCount = stepsDone.filter(Boolean).length
+
+  const filteredTests = testConfigs.filter(c =>
+    c.label.toLowerCase().includes(testSearch.trim().toLowerCase())
+  )
+
   if (submitSuccess) {
     return (
-      <div className="bg-white rounded-3xl shadow-2xl shadow-blue-200/50 p-6 sm:p-8 border border-blue-100 animate-fade-up">
-        <div className="text-center">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-300/50">
-            <CheckCircle className="w-10 h-10 text-white" />
+      <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden animate-fade-up">
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 px-6 sm:px-8 py-8 text-center text-white">
+          <div className="mx-auto w-16 h-16 bg-white/20 border border-white/30 rounded-full flex items-center justify-center mb-3 animate-pulse-ring">
+            <CheckCircle className="w-9 h-9 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Appointment Confirmed!</h2>
-          <p className="text-gray-600 mb-4">
-            Please proceed to CHO Lab on your date of choice at 8:00 AM.
+          <h2 className="text-2xl font-extrabold tracking-tight">Appointment Confirmed</h2>
+          <p className="text-emerald-50 text-sm mt-1">
+            {formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.
           </p>
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100 p-4 rounded-2xl mb-4">
-            <p className="text-sm text-gray-600 mb-2">Your Appointment ID:</p>
-            <p className="text-sm sm:text-lg font-mono font-bold text-gray-900 break-all">{qrCodeId}</p>
+        </div>
+
+        <div className="p-6 sm:p-8 space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-2">Booking summary</p>
+            <dl className="space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Patient</dt>
+                <dd className="font-semibold text-slate-900 text-right truncate">{formData.fullName || '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Tests</dt>
+                <dd className="font-semibold text-slate-900 text-right">{formData.selectedTests.length}</dd>
+              </div>
+            </dl>
+            {formData.selectedTests.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {formData.selectedTests.map(t => (
+                  <span key={t} className="px-2.5 py-1 bg-sky-100 text-sky-800 text-xs font-semibold rounded-full">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
+
+          <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-4 text-center">
+            <p className="text-xs text-slate-500 mb-1.5">Your Appointment ID</p>
+            <p className="text-sm sm:text-base font-mono font-bold text-slate-900 break-all">{qrCodeId}</p>
+          </div>
+
           <ConfirmationQRCode qrCodeId={qrCodeId} />
+
+          {requiresFasting && (
+            <FastingNotice selectedTests={formData.selectedTests} />
+          )}
+
+          <ol className="grid sm:grid-cols-3 gap-2 text-center">
+            {['Bring a valid ID', 'Follow fasting guide', 'Show QR at the lab'].map((s, i) => (
+              <li key={s} className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600">
+                <span className="block text-sm font-bold text-sky-700">{i + 1}</span>{s}
+              </li>
+            ))}
+          </ol>
+
           <button
             onClick={() => {
               setSubmitSuccess(false)
               // Keep the booked date so the user immediately sees the updated
-              // availability (e.g. 99 / 100) instead of the base daily limit.
+              // availability instead of the base daily limit.
               // Bump quotaVersion to refetch authoritative counts from server.
               setFormData(prev => ({
                 fullName: '',
@@ -224,10 +410,11 @@ export default function AppointmentForm() {
                 selectedTests: [],
                 appointmentDate: prev.appointmentDate
               }))
+              setTestSearch('')
               setQuotaVersion(v => v + 1)
               setQrCodeId('')
             }}
-            className="mt-6 w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all hover:shadow-lg hover:shadow-blue-300/50 font-semibold"
+            className="w-full px-6 py-3.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-lg font-semibold"
           >
             Book Another Appointment
           </button>
@@ -236,33 +423,49 @@ export default function AppointmentForm() {
     )
   }
 
-  const testConfigs = Object.values(TEST_CONFIG)
-
   return (
-    <div className="bg-white/90 backdrop-blur rounded-3xl shadow-2xl shadow-blue-200/50 p-4 sm:p-8 border border-blue-100">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Book a Laboratory Appointment</h1>
-        <p className="text-gray-500 text-sm sm:text-base">Fill out the form below to schedule your laboratory appointment.</p>
+    <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden">
+      <div className="px-5 sm:px-7 pt-6 pb-5 border-b border-slate-100">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Book a Laboratory Appointment</h1>
+            <p className="text-slate-500 text-sm mt-1">Complete each step below to schedule your visit.</p>
+          </div>
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold tabular-nums">
+            {doneCount}/4 steps
+          </span>
+        </div>
+        <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-sky-600 to-cyan-500 transition-all duration-500"
+            style={{ width: `${(doneCount / 4) * 100}%` }}
+          />
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-7">
-        {/* Patient Information */}
-        <section>
-          <SectionHeading icon={<User className="w-4 h-4" />} title="Patient Information" tone="from-blue-500 to-cyan-500" />
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-slate-50/60">
+        <StepCard step="1" title="Patient Information" subtitle="Who is this appointment for" done={stepsDone[0]}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                required
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your full name"
-              />
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  className={`${FIELD_CLASS} pl-10`}
+                  placeholder="Juan D. Cruz"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Age</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Age <span className="text-red-500">*</span>
+              </label>
               <input
                 type="number"
                 required
@@ -270,97 +473,98 @@ export default function AppointmentForm() {
                 max="120"
                 value={formData.age}
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your age"
+                className={FIELD_CLASS}
+                placeholder="e.g. 34"
               />
             </div>
           </div>
-        </section>
+        </StepCard>
 
-        {/* Appointment Date */}
-        <section>
-          <SectionHeading icon={<Calendar className="w-4 h-4" />} title="Appointment Date" tone="from-violet-500 to-purple-500" />
-          <input
-            type="date"
-            required
-            min={new Date().toISOString().split('T')[0]}
-            value={formData.appointmentDate}
-            onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </section>
+        <StepCard step="2" title="Schedule and Facility" subtitle="When and where you were consulted" done={stepsDone[1]}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Appointment Date <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="date"
+                  required
+                  min={todayStr}
+                  value={formData.appointmentDate}
+                  onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
+                  className={`${FIELD_CLASS} pl-10`}
+                />
+              </div>
+              {formData.appointmentDate && (
+                <p className="mt-1.5 text-xs font-medium text-sky-700">{prettyDate(formData.appointmentDate)}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Health Facility Where Consulted <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <select
+                  required
+                  value={formData.healthFacility}
+                  onChange={(e) => setFormData({ ...formData, healthFacility: e.target.value })}
+                  className={`${FIELD_CLASS} pl-10 appearance-none ${formData.healthFacility ? '' : 'text-slate-400'}`}
+                >
+                  <option value="">Select a health facility</option>
+                  {HEALTH_FACILITIES.map(facility => (
+                    <option key={facility} value={facility}>{facility}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </StepCard>
 
-        {/* Health Facility */}
-        <section>
-          <SectionHeading icon={<MapPin className="w-4 h-4" />} title="Health Facility Where Consulted" tone="from-emerald-500 to-teal-500" />
-          <select
-            required
-            value={formData.healthFacility}
-            onChange={(e) => setFormData({ ...formData, healthFacility: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Select a health facility</option>
-            {HEALTH_FACILITIES.map(facility => (
-              <option key={facility} value={facility}>{facility}</option>
+        <StepCard step="3" title="YAKAP Registration" subtitle="PhilHealth YAKAP membership status" done={stepsDone[2]}>
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200">
+            {[
+              { value: false, label: 'Not registered', hint: 'No' },
+              { value: true, label: 'Registered', hint: 'Yes' },
+            ].map(opt => (
+              <button
+                key={opt.hint}
+                type="button"
+                onClick={() => setFormData({ ...formData, yakapRegistered: opt.value })}
+                aria-pressed={formData.yakapRegistered === opt.value}
+                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                  formData.yakapRegistered === opt.value
+                    ? 'bg-white text-sky-900 shadow border border-slate-200'
+                    : 'text-slate-500 hover:text-slate-700 border border-transparent'
+                }`}
+              >
+                {opt.hint}
+                <span className="text-[11px] font-normal opacity-70">{opt.label}</span>
+              </button>
             ))}
-          </select>
-        </section>
-
-        {/* YAKAP Registration */}
-        <section>
-          <SectionHeading icon={<HeartHandshake className="w-4 h-4" />} title="YAKAP Registration Status" tone="from-rose-500 to-pink-500" />
-          <div className="grid grid-cols-2 gap-3">
-            <label
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors font-medium ${
-                !formData.yakapRegistered
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="yakapRegistered"
-                checked={!formData.yakapRegistered}
-                onChange={() => setFormData({ ...formData, yakapRegistered: false })}
-                className="sr-only"
-              />
-              No
-            </label>
-            <label
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 cursor-pointer transition-colors font-medium ${
-                formData.yakapRegistered
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="yakapRegistered"
-                checked={formData.yakapRegistered}
-                onChange={() => setFormData({ ...formData, yakapRegistered: true })}
-                className="sr-only"
-              />
-              Yes
-            </label>
           </div>
 
           {!formData.yakapRegistered && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="text-sm text-yellow-800">
-                <AlertCircle className="inline w-4 h-4 mr-1" />
-                YAKAP verification may be done at CHO. Charges or cost may be applied for non-CHO YAKAP registered.
+            <div className="mt-3 flex gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <p className="text-[13px] leading-relaxed text-amber-900">
+                YAKAP verification may be done at CHO. Charges or cost may be applied for non-CHO YAKAP registered patients.
               </p>
             </div>
           )}
 
           {formData.yakapRegistered && (
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">YAKAP Facility</label>
+            <div className="mt-4">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                YAKAP Facility <span className="text-red-500">*</span>
+              </label>
               <select
                 required
                 value={formData.yakapFacility}
                 onChange={(e) => setFormData({ ...formData, yakapFacility: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`${FIELD_CLASS} ${formData.yakapFacility ? '' : 'text-slate-400'}`}
               >
                 <option value="">Select YAKAP facility</option>
                 {HEALTH_FACILITIES.map(facility => (
@@ -369,157 +573,187 @@ export default function AppointmentForm() {
               </select>
             </div>
           )}
-        </section>
+        </StepCard>
 
-        {/* Laboratory Tests */}
-        <section>
-          <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
-          <p className="text-xs text-gray-500 mb-3">
-            Half of daily slots are reserved for walk-ins. Online slots per day are shown below.
-            If a test is fully booked, please select another day.
-          </p>
-          {loadingQuotas && (
-            <p className="text-xs text-blue-600 mb-3 animate-pulse">Checking test availability for selected date...</p>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {testConfigs.map(config => {
-              const test = config.label
-              // Online-bookable share only; remainder is held for walk-ins.
-              const limit = onlineLimitFor(config.limit)
-              // Only trust counts actually loaded for the selected date —
-              // never display a "0 booked" that is just missing data.
-              const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
-              const availableCount = Math.max(0, limit - bookedCount)
-              const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
-              const isFullyBooked = hasQuotaData && bookedCount >= limit
-              const checked = formData.selectedTests.includes(test)
-
-              return (
-                <label
-                  key={test}
-                  className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
-                    isFullyBooked
-                      ? 'border-gray-200 bg-gray-100/80 cursor-not-allowed opacity-75'
-                      : checked
-                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-sm shadow-blue-200 cursor-pointer'
-                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={isFullyBooked}
-                      onChange={() => handleTestToggle(test)}
-                      className="mt-0.5 w-4 h-4 accent-blue-600 disabled:cursor-not-allowed"
-                    />
-                    <div className="flex flex-col">
-                      <span className={`text-sm ${isFullyBooked ? 'text-gray-400 line-through' : checked ? 'text-blue-900 font-medium' : 'text-gray-700'}`}>
-                        {test}
-                      </span>
-                      <span className="text-[11px] text-gray-500 font-normal">
-                        {hasQuotaData
-                          ? `${availableCount} / ${limit} online slots available`
-                          : `Online Limit: ${limit} / day (rest for walk-in)`}
-                      </span>
-                    </div>
-                  </div>
-                  {isFullyBooked && (
-                    <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
-                      Fully Booked: pick another day
-                    </span>
-                  )}
-                </label>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Fasting Warning */}
-        {requiresFasting && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-            {(() => {
-              const hasLipid = formData.selectedTests.includes(TEST_CONFIG.lipid_profile.label)
-              const hasFbs = formData.selectedTests.includes(TEST_CONFIG.fbs.label)
-              if (hasLipid && hasFbs) {
-                return (
-                  <div className="text-sm text-red-800">
-                    <p className="font-bold underline underline-offset-2">
-                      <AlertCircle className="inline w-4 h-4 mr-1" />
-                      LIPID PROFILE with FBS
-                    </p>
-                    <ul className="mt-2 space-y-1 font-medium">
-                      <li>6 - 7 PM – DINNER (PANYAPON)</li>
-                      <li>9:00 PM – LAST MEAL (ULIHI NGA KA-ON)</li>
-                    </ul>
-                    <p className="mt-2 font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
-                    <p className="italic">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
-                    <p className="mt-2 font-bold">COME BACK 7:00 AM THE NEXT WORKING DAY</p>
-                    <p className="italic">(BALIK SA LABORATORY SA 7:00 SG AGA)</p>
-                  </div>
-                )
-              }
-              if (hasLipid) {
-                return (
-                  <div className="text-sm text-red-800">
-                    <p className="font-bold underline underline-offset-2">
-                      <AlertCircle className="inline w-4 h-4 mr-1" />
-                      LIPID PROFILE only
-                    </p>
-                    <ul className="mt-2 space-y-1 font-medium">
-                      <li>8:00 PM – DINNER (PANYAPON)</li>
-                      <li>9:00 PM – LAST MEAL (ULIHI NGA KA-ON)</li>
-                    </ul>
-                    <p className="mt-2 font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
-                    <p className="italic">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
-                    <p className="mt-2 font-bold">COME BACK 8:00 AM THE NEXT WORKING DAY</p>
-                    <p className="italic">(BALIK SA LABORATORY SA 8:00 SG AGA)</p>
-                  </div>
-                )
-              }
-              if (hasFbs) {
-                return (
-                  <div className="text-sm text-red-800">
-                    <p className="font-bold underline underline-offset-2">
-                      <AlertCircle className="inline w-4 h-4 mr-1" />
-                      FBS ONLY:
-                    </p>
-                    <ul className="mt-2 space-y-1 font-medium">
-                      <li>6 – 8 PM – DINNER (PANYAPON)</li>
-                      <li>1:00 AM – SNACKS GID (ULIHI NGA KA-ON)</li>
-                    </ul>
-                    <p className="mt-2 font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
-                    <p className="italic">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
-                    <p className="mt-2 font-bold">COME BACK 7:00 AM THE NEXT WORKING DAY</p>
-                    <p className="italic">(BALIK SA LABORATORY SA 7:00 SG AGA)</p>
-                  </div>
-                )
-              }
-              return (
-                <p className="text-sm text-red-800 font-medium">
-                  <AlertCircle className="inline w-4 h-4 mr-1" />
-                  10–12 Hours Fasting is required prior to your test.
-                </p>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* Error Message */}
-        {submitError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-            <p className="text-sm text-red-800">{submitError}</p>
-          </div>
-        )}
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting || formData.selectedTests.length === 0}
-          className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 text-white rounded-2xl hover:from-blue-700 hover:via-blue-600 hover:to-cyan-600 transition-all hover:shadow-xl hover:shadow-blue-400/40 hover:-translate-y-0.5 disabled:from-gray-400 disabled:via-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-semibold text-base shadow-lg shadow-blue-600/25"
+        <StepCard
+          step="4"
+          title={`Laboratory Tests${formData.selectedTests.length > 0 ? ` (${formData.selectedTests.length} selected)` : ''}`}
+          subtitle="Half of daily slots are held for walk-ins"
+          done={stepsDone[3]}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Appointment'}
-        </button>
+          <div className="relative mb-3">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              type="search"
+              value={testSearch}
+              onChange={(e) => setTestSearch(e.target.value)}
+              className={`${FIELD_CLASS} pl-10 pr-9`}
+              placeholder="Search tests, e.g. CBC"
+              aria-label="Search laboratory tests"
+            />
+            {testSearch && (
+              <button
+                type="button"
+                onClick={() => setTestSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-xs text-slate-500">
+              {formData.appointmentDate
+                ? `Online slots for ${prettyDate(formData.appointmentDate)}. If a test is fully booked, please select another day.`
+                : 'Select a date above to see live slot availability.'}
+            </p>
+            {formData.selectedTests.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, selectedTests: [] }))}
+                className="shrink-0 ml-2 text-xs font-semibold text-sky-700 hover:text-sky-900 hover:underline underline-offset-2"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {loadingQuotas && (
+            <p className="text-xs text-sky-600 mb-2.5 animate-pulse">Checking test availability for selected date...</p>
+          )}
+
+          {filteredTests.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+              No tests match &ldquo;{testSearch}&rdquo;.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {filteredTests.map(config => {
+                const test = config.label
+                // Online-bookable share only; remainder is held for walk-ins.
+                const limit = onlineLimitFor(config.limit)
+                // Only trust counts actually loaded for the selected date —
+                // never display a "0 booked" that is just missing data.
+                const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
+                const availableCount = Math.max(0, limit - bookedCount)
+                const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
+                const isFullyBooked = hasQuotaData && bookedCount >= limit
+                const checked = formData.selectedTests.includes(test)
+                const pct = Math.round((availableCount / limit) * 100)
+
+                return (
+                  <label
+                    key={test}
+                    className={`group flex flex-col gap-2 p-3.5 rounded-xl border-2 transition-all ${
+                      isFullyBooked
+                        ? 'border-slate-200 bg-slate-100/70 cursor-not-allowed opacity-70'
+                        : checked
+                        ? 'border-sky-600 bg-sky-50/70 shadow-sm cursor-pointer'
+                        : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40 cursor-pointer'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isFullyBooked}
+                          onChange={() => handleTestToggle(test)}
+                          className="mt-0.5 w-4 h-4 shrink-0 accent-sky-700 disabled:cursor-not-allowed"
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className={`text-sm truncate ${isFullyBooked ? 'text-slate-400 line-through' : checked ? 'text-sky-950 font-semibold' : 'text-slate-700'}`}>
+                            {test}
+                          </span>
+                          <span className="text-[11px] text-slate-500 tabular-nums">
+                            {hasQuotaData
+                              ? `${availableCount} of ${limit} online slots left`
+                              : `Up to ${limit} online per day`}
+                          </span>
+                        </div>
+                      </div>
+                      {config.requiresFasting ? (
+                        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wide" title="Fasting required">
+                          <Moon className="w-3 h-3" /> Fasting
+                        </span>
+                      ) : null}
+                    </div>
+                    {hasQuotaData && !isFullyBooked && (
+                      <div className="h-1.5 rounded-full bg-slate-200/80 overflow-hidden" aria-hidden="true">
+                        <div
+                          className={`h-full rounded-full ${pct <= 20 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                    {isFullyBooked && (
+                      <span className="self-start px-2 py-0.5 text-[11px] font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
+                        Fully booked: pick another day
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+
+          {formData.selectedTests.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {formData.selectedTests.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleTestToggle(t)}
+                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-sky-950 text-white text-xs font-medium rounded-full hover:bg-sky-900"
+                  title={`Remove ${t}`}
+                >
+                  {t}
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ))}
+            </div>
+          )}
+        </StepCard>
+
+        {requiresFasting && (
+          <FastingNotice selectedTests={formData.selectedTests} />
+        )}
+
+        {submitError && (
+          <div className="flex gap-2.5 p-4 bg-red-50 border border-red-200 rounded-2xl" role="alert">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
+            <p className="text-sm text-red-800 leading-relaxed">{submitError}</p>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 sm:sticky sm:bottom-4">
+          <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
+            <ClipboardCheck className="w-4 h-4 text-sky-700 shrink-0" />
+            {formData.selectedTests.length > 0 && formData.appointmentDate ? (
+              <span>
+                <strong className="text-slate-900">{formData.selectedTests.length} test{formData.selectedTests.length > 1 ? 's' : ''}</strong>
+                {' '}on <strong className="text-slate-900">{prettyDate(formData.appointmentDate)}</strong>
+              </span>
+            ) : (
+              <span>Select a date and at least one test to continue.</span>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={isSubmitting || formData.selectedTests.length === 0}
+            className="w-full px-6 py-4 bg-gradient-to-r from-sky-800 to-cyan-600 text-white rounded-xl hover:from-sky-900 hover:to-cyan-700 transition-all hover:shadow-xl hover:shadow-sky-500/25 hover:-translate-y-0.5 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-bold text-base shadow-lg"
+          >
+            {isSubmitting ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Submitting...
+              </span>
+            ) : (
+              'Submit Appointment'
+            )}
+          </button>
+        </div>
       </form>
     </div>
   )
@@ -538,18 +772,18 @@ function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="p-1 rounded-3xl bg-gradient-to-br from-blue-600 via-cyan-500 to-blue-600 shadow-lg shadow-blue-300/50">
-        <div ref={wrapRef} className="bg-white p-4 rounded-[1.35rem]">
+    <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 p-5">
+      <div className="p-1.5 rounded-2xl bg-gradient-to-br from-sky-800 to-cyan-600 shadow-lg shadow-sky-500/25">
+        <div ref={wrapRef} className="bg-white p-4 rounded-xl">
           <QRCodeCanvas value={qrCodeId} size={200} level="H" />
         </div>
       </div>
-      <p className="text-sm text-gray-600 mt-2">Show this QR code at the laboratory</p>
+      <p className="text-[13px] text-slate-600 mt-3 font-medium">Show this QR code at the laboratory</p>
       <button
         onClick={handleDownload}
-        className="mt-2 flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
+        className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sky-800 hover:border-sky-400 hover:bg-sky-50 text-sm font-semibold transition-colors"
       >
-        <Download className="w-4 h-4 mr-1" />
+        <Download className="w-4 h-4" />
         Download QR Code
       </button>
     </div>

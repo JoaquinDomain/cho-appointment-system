@@ -1,22 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   color-scheme: light;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #0284c7;
+  color: #fff;
+}
+
+/* Refined date input on light backgrounds */
+input[type="date"] {
+  min-height: 2.75rem;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
 }
 
 @keyframes fade-up {
@@ -39,6 +59,18 @@ body {
   }
 }
 
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
 .animate-fade-up {
   animation: fade-up 0.5s ease-out both;
 }
@@ -47,7 +79,27 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
+.animate-pulse-ring {
+  animation: pulse-ring 2.2s ease-out infinite;
+}
+
 .bg-dot-grid {
   background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px);
   background-size: 22px 22px;
+}
+
+/* Thin elegant scrollbars for tables and modals */
+.slim-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.slim-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.slim-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.slim-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
