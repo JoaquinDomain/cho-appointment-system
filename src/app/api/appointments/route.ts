@@ -4,7 +4,7 @@ import { d1Query, d1Run } from '@/lib/d1'
 import { requireAdmin } from '@/lib/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
-import { TEST_CONFIG } from '@/lib/types'
+import { TEST_CONFIG, onlineLimitFor } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
@@ -73,14 +73,18 @@ export async function POST(req: Request) {
   const overLimit: string[] = []
   for (const label of parsed.data.selected_tests) {
     const config = testConfigs.find((t) => t.label === label)
-    if (config && (counts[label] || 0) >= config.limit) {
-      overLimit.push(`${label} (Limit: ${config.limit}, Booked: ${counts[label]})`)
+    // Only half of daily capacity is bookable online — the rest is
+    // reserved for walk-ins. Block online booking once the online share
+    // is full so the patient picks another day.
+    const onlineLimit = config ? onlineLimitFor(config.limit) : 0
+    if (config && (counts[label] || 0) >= onlineLimit) {
+      overLimit.push(`${label} (Online limit: ${onlineLimit}, Booked: ${counts[label]})`)
     }
   }
   if (overLimit.length > 0) {
     return NextResponse.json(
       {
-        error: `The following tests have reached their daily booking limit for ${parsed.data.appointment_date}: ${overLimit.join(', ')}`,
+        error: `Online slots for ${parsed.data.appointment_date} are full (half of daily capacity is reserved for walk-ins): ${overLimit.join(', ')}. Please select another day that still has online slots.`,
       },
       { status: 400 }
     )

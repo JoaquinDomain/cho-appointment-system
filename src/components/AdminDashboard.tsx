@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3 } from 'lucide-react'
-import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, type AppointmentStatus } from '@/lib/types'
+import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
 import QRScanner from './QRScanner'
 
 const PAGE_SIZE = 25
@@ -493,17 +493,24 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
                 const booked = quotaCounts[t.label] ?? 0
+                // Total capacity vs online share (half held for walk-ins).
+                const onlineLimit = onlineLimitFor(t.limit)
+                const onlineAvailable = Math.max(0, onlineLimit - booked)
                 const available = t.limit - booked
                 const pct = Math.min(100, Math.round((available / t.limit) * 100))
+                const onlineFull = onlineAvailable <= 0
                 const full = available <= 0
                 return (
-                  <div key={t.label} className={`p-3 rounded-xl border ${full ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                  <div key={t.label} className={`p-3 rounded-xl border ${onlineFull ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-gray-900">{t.label}</span>
-                      <span className={full ? 'text-red-700 font-semibold' : 'text-gray-600'}>{available}/{t.limit}{full ? ' FULL' : ''}</span>
+                      <span className={onlineFull ? 'text-red-700 font-semibold' : 'text-gray-600'}>{available}/{t.limit}{onlineFull ? ' ONLINE FULL' : full ? ' FULL' : ''}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      Online: {onlineAvailable}/{onlineLimit} left · {t.limit - onlineLimit} held for walk-in
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div className={`h-full ${full ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-full ${onlineFull ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )

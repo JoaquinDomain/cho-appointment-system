@@ -51,6 +51,13 @@ export const TEST_CONFIG = {
 
 export type TestKey = keyof typeof TEST_CONFIG
 
+// Half of each test's daily capacity is reserved for walk-ins; the other
+// half is bookable online. Online limit rounds up so tiny quotas
+// (e.g. OGTT limit 1) still allow at least 1 online booking.
+export function onlineLimitFor(totalLimit: number): number {
+  return Math.max(1, Math.ceil(totalLimit / 2))
+}
+
 export const LABORATORY_TESTS = Object.values(TEST_CONFIG).map(t => t.label)
 
 export const FASTING_REQUIRED_TESTS = Object.values(TEST_CONFIG)

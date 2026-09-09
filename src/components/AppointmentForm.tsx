@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Calendar, User, MapPin, AlertCircle, CheckCircle, Download, FlaskConical, HeartHandshake } from 'lucide-react'
-import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitFor } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 
 interface FormData {
@@ -73,14 +73,15 @@ export default function AppointmentForm() {
             setTestCounts(newCounts)
             setQuotasLoaded(true)
 
-            // Deselect any tests that are fully booked for the chosen date
+            // Deselect any tests whose online share is fully booked for the
+            // chosen date (half of capacity is reserved for walk-ins).
             const testConfigs = Object.values(TEST_CONFIG)
             setFormData(prev => {
               const validSelectedTests = prev.selectedTests.filter(testLabel => {
                 const config = testConfigs.find(t => t.label === testLabel)
                 if (!config) return true
                 const count = newCounts[testLabel] || 0
-                return count < config.limit
+                return count < onlineLimitFor(config.limit)
               })
 
               if (validSelectedTests.length !== prev.selectedTests.length) {
@@ -110,6 +111,20 @@ export default function AppointmentForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Client-side guard: never let a fully-booked-online test submit for
+    // this date — force picking another day before hitting the server.
+    if (quotasLoaded && formData.appointmentDate) {
+      const full = formData.selectedTests.filter(label => {
+        const cfg = Object.values(TEST_CONFIG).find(t => t.label === label)
+        return cfg && (testCounts[label] || 0) >= onlineLimitFor(cfg.limit)
+      })
+      if (full.length > 0) {
+        setSubmitError(
+          `Online slots for this day are full: ${full.join(', ')}. Half of daily capacity is reserved for walk-ins — please select another day.`
+        )
+        return
+      }
+    }
     setIsSubmitting(true)
     setSubmitError('')
 
@@ -359,17 +374,22 @@ export default function AppointmentForm() {
         {/* Laboratory Tests */}
         <section>
           <SectionHeading icon={<FlaskConical className="w-4 h-4" />} title="Laboratory Tests" tone="from-amber-500 to-orange-500" />
+          <p className="text-xs text-gray-500 mb-3">
+            Half of daily slots are reserved for walk-ins. Online slots per day are shown below —
+            if a test is fully booked, please select another day.
+          </p>
           {loadingQuotas && (
             <p className="text-xs text-blue-600 mb-3 animate-pulse">Checking test availability for selected date...</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {testConfigs.map(config => {
               const test = config.label
-              const limit = config.limit
+              // Online-bookable share only; remainder is held for walk-ins.
+              const limit = onlineLimitFor(config.limit)
               // Only trust counts actually loaded for the selected date —
               // never display a "0 booked" that is just missing data.
               const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
-              const availableCount = limit - bookedCount
+              const availableCount = Math.max(0, limit - bookedCount)
               const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
               const isFullyBooked = hasQuotaData && bookedCount >= limit
               const checked = formData.selectedTests.includes(test)
@@ -399,14 +419,14 @@ export default function AppointmentForm() {
                       </span>
                       <span className="text-[11px] text-gray-500 font-normal">
                         {hasQuotaData
-                          ? `${availableCount} / ${limit} available`
-                          : `Daily Limit: ${limit}`}
+                          ? `${availableCount} / ${limit} online slots available`
+                          : `Online Limit: ${limit} / day (rest for walk-in)`}
                       </span>
                     </div>
                   </div>
                   {isFullyBooked && (
                     <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
-                      Fully Booked
+                      Fully Booked — pick another day
                     </span>
                   )}
                 </label>
