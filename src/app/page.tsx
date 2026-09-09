@@ -1,13 +1,7 @@
 import { redirect } from 'next/navigation'
-import { HeartPulse, Clock, MapPin, CalendarCheck, FlaskConical, QrCode } from 'lucide-react'
+import { HeartPulse, Clock, MapPin } from 'lucide-react'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
-
-const STEPS = [
-  { icon: CalendarCheck, label: 'Pick a date' },
-  { icon: FlaskConical, label: 'Choose tests' },
-  { icon: QrCode, label: 'Show your QR' },
-]
 
 export default function Home() {
   if (isAdminSite) {
@@ -39,23 +33,6 @@ export default function Home() {
               <Clock className="w-4 h-4 text-cyan-200" /> Lab opens 8:00 AM
             </span>
           </div>
-
-          <ol className="mt-7 flex items-stretch justify-center gap-2 sm:gap-3 text-left">
-            {STEPS.map((s, i) => (
-              <li
-                key={s.label}
-                className="flex-1 sm:flex-none flex items-center gap-2.5 bg-white/10 backdrop-blur border border-white/15 rounded-2xl px-3 sm:px-4 py-2.5"
-              >
-                <span className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-7 h-7 shrink-0 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-[11px] font-bold">
-                    {i + 1}
-                  </span>
-                  <s.icon className="w-4 h-4 shrink-0 text-cyan-200" />
-                  <span className="text-xs sm:text-sm font-medium truncate">{s.label}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
         </div>
       </header>
 
