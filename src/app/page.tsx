@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { HeartPulse, FlaskConical, Clock, ShieldCheck, MapPin } from 'lucide-react'
+import { HeartPulse, Clock, MapPin } from 'lucide-react'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
 
@@ -28,15 +28,9 @@ export default function Home() {
           <p className="text-blue-100 text-sm sm:text-lg">
             City Health Office &middot; Bacolod City
           </p>
-          <div className="mt-7 flex flex-wrap justify-center gap-2.5 text-xs sm:text-sm">
-            <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2 shadow">
-              <FlaskConical className="w-4 h-4 text-cyan-200" /> Book lab tests online
-            </span>
+          <div className="mt-7 flex justify-center items-center text-xs sm:text-sm">
             <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2 shadow">
               <Clock className="w-4 h-4 text-cyan-200" /> Lab opens 8:00 AM
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2 shadow">
-              <ShieldCheck className="w-4 h-4 text-cyan-200" /> Free &amp; secure booking
             </span>
           </div>
         </div>
