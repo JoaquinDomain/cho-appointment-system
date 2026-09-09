@@ -34,11 +34,6 @@ export default function Home() {
               Appointment System
             </span>
           </h1>
-          <p className="text-sky-100/90 text-sm sm:text-base max-w-xl mx-auto">
-            Book your laboratory tests online. Half of daily slots are open for
-            booking and half are held for walk-ins.
-          </p>
-
           <div className="mt-6 flex justify-center items-center text-xs sm:text-sm">
             <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2 shadow">
               <Clock className="w-4 h-4 text-cyan-200" /> Lab opens 8:00 AM
