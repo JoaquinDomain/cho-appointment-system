@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus } from 'lucide-react'
+import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus, LayoutDashboard } from 'lucide-react'
 import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
 import QRScanner from './QRScanner'
 import WalkinModal from './WalkinModal'
@@ -9,10 +9,10 @@ import WalkinModal from './WalkinModal'
 const PAGE_SIZE = 25
 
 const STATUS_STYLES: Record<AppointmentStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-200 text-gray-600',
+  pending: 'bg-yellow-100 text-yellow-800 ring-1 ring-inset ring-yellow-900/10',
+  confirmed: 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-900/10',
+  completed: 'bg-green-100 text-green-800 ring-1 ring-inset ring-green-900/10',
+  cancelled: 'bg-gray-200 text-gray-600 ring-1 ring-inset ring-gray-900/10',
 }
 
 function toCsvCell(value: string | number): string {
@@ -429,14 +429,18 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">City Health Office &middot; Bacolod City</p>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-0.5">Admin Dashboard</h1>
-            <p className="text-slate-500 text-sm sm:text-base">Laboratory appointments, quotas, and QR check-ins</p>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-800 to-cyan-600 flex items-center justify-center shadow-md shadow-sky-900/20 shrink-0">
+              <LayoutDashboard className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">City Health Office &middot; Bacolod City</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-0.5">Admin Dashboard</h1>
+            </div>
           </div>
           <button
             onClick={() => setShowScanner(!showScanner)}
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-md font-semibold"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-md active:scale-[0.98] font-semibold"
           >
             <Scan className="w-5 h-5 mr-2" />
             {showScanner ? 'Close Scanner' : 'Scan QR Code'}
@@ -449,7 +453,7 @@ export default function AdminDashboard() {
             onClick={showAll}
             aria-pressed={totalActive}
             title="Show all appointments"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20 cursor-pointer transition hover:brightness-110 ${totalActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${totalActive ? 'ring-2 ring-white/70' : ''}`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -466,7 +470,7 @@ export default function AdminDashboard() {
             onClick={todayActive ? showAll : showToday}
             aria-pressed={todayActive}
             title="Show today's appointments"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20 cursor-pointer transition hover:brightness-110 ${todayActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${todayActive ? 'ring-2 ring-white/70' : ''}`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -483,7 +487,7 @@ export default function AdminDashboard() {
             onClick={yakapActive ? showAll : showYakap}
             aria-pressed={yakapActive}
             title="Show YAKAP-registered patients"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20 cursor-pointer transition hover:brightness-110 ${yakapActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${yakapActive ? 'ring-2 ring-white/70' : ''}`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -514,7 +518,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setShowWalkin(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 text-white text-sm font-semibold rounded-xl hover:bg-sky-800 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 text-white text-sm font-semibold rounded-xl hover:bg-sky-800 active:scale-[0.98] transition"
           >
             <UserPlus className="w-4 h-4" />
             Add Walk-in
@@ -623,7 +627,7 @@ export default function AdminDashboard() {
                 placeholder="Search name or appointment ID..."
                 value={searchTerm}
                 onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
             <div className="relative">
@@ -631,7 +635,7 @@ export default function AdminDashboard() {
               <select
                 value={facilityFilter}
                 onChange={(e) => { setPage(1); setFacilityFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none"
               >
                 <option value="">All Facilities</option>
                 {HEALTH_FACILITIES.map(facility => (
@@ -645,7 +649,7 @@ export default function AdminDashboard() {
                 type="date"
                 value={dateFilter}
                 onChange={(e) => { setPage(1); setDateFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
             <div className="relative">
@@ -653,7 +657,7 @@ export default function AdminDashboard() {
               <select
                 value={statusFilter}
                 onChange={(e) => { setPage(1); setStatusFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none"
               >
                 <option value="">All Statuses</option>
                 {APPOINTMENT_STATUSES.map(s => (
@@ -798,37 +802,37 @@ export default function AdminDashboard() {
         <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="slim-scroll overflow-auto max-h-[68vh]">
             <table className="w-full">
-              <thead className="bg-slate-50 sticky top-0 z-[1] shadow-[0_1px_0_0_#e2e8f0]">
+              <thead className="bg-slate-100/90 backdrop-blur sticky top-0 z-[1] shadow-[0_1px_0_0_#e2e8f0]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <User className="inline w-4 h-4 mr-1" />
                     Patient
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Age
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     <Calendar className="inline w-4 h-4 mr-1" />
                     Appointment Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <MapPin className="inline w-4 h-4 mr-1" />
                     Facility
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     YAKAP
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Tests
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <Clock className="inline w-4 h-4 mr-1" />
                     Booked
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Appointment ID
                   </th>
                 </tr>
@@ -904,7 +908,7 @@ export default function AdminDashboard() {
               className="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/10 w-full max-w-lg max-h-[90vh] overflow-y-auto slim-scroll animate-fade-up"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100 bg-slate-50/60 rounded-t-2xl">
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100 bg-slate-50/90 backdrop-blur rounded-t-2xl sticky top-0 z-10">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-xl font-extrabold tracking-tight text-slate-900 break-words">{selectedAppointment.patient_name}</h2>
