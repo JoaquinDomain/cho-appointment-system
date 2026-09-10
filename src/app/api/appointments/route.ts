@@ -9,6 +9,7 @@ import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appoin
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { countBookedTests, type QuotaRow } from '@/lib/quota-count'
+import { verifyTurnstile } from '@/lib/turnstile'
 
 // POST /api/appointments — public booking: validated + quota-checked +
 // rate-limited. The server generates the UUID (client `id`, if any, ignored).
@@ -27,6 +28,22 @@ export async function POST(req: Request) {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
+  }
+
+  // Cloudflare Turnstile bot check — enforced only when configured so local
+  // dev without keys keeps working.
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const token =
+      body && typeof body === 'object'
+        ? String((body as Record<string, unknown>).turnstileToken ?? '')
+        : ''
+    const check = await verifyTurnstile(token, ip)
+    if (!check.ok) {
+      return NextResponse.json(
+        { error: 'Human verification failed. Please refresh and try again.' },
+        { status: 403 }
+      )
+    }
   }
 
   const parsed = validateAppointmentInput(body)

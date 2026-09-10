@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar, User, MapPin, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitFor } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
+import TurnstileWidget from '@/components/TurnstileWidget'
+
+const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
 
 interface FormData {
   fullName: string
@@ -176,6 +179,7 @@ export default function AppointmentForm() {
   const [submitError, setSubmitError] = useState('')
   const [qrCodeId, setQrCodeId] = useState('')
   const [testSearch, setTestSearch] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -259,6 +263,12 @@ export default function AppointmentForm() {
     setIsSubmitting(true)
     setSubmitError('')
 
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setSubmitError('Please complete the human verification check below.')
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       // Secure path: validated + quota-checked + rate-limited server API
       // generates the UUID. No direct database write, no client-made ID.
@@ -273,6 +283,7 @@ export default function AppointmentForm() {
           yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
           selected_tests: formData.selectedTests,
           appointment_date: formData.appointmentDate,
+          ...(TURNSTILE_ENABLED ? { turnstileToken } : {}),
         }),
       })
       const json = await res.json().catch(() => ({}))
@@ -728,6 +739,14 @@ export default function AppointmentForm() {
         )}
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 sm:sticky sm:bottom-4">
+          {TURNSTILE_ENABLED && (
+            <div className="mb-3">
+              <TurnstileWidget
+                onToken={setTurnstileToken}
+                onExpire={() => setTurnstileToken('')}
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
             <ClipboardCheck className="w-4 h-4 text-sky-700 shrink-0" />
             {formData.selectedTests.length > 0 && formData.appointmentDate ? (
