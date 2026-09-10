@@ -7,6 +7,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { TEST_CONFIG, onlineLimitFor } from '@/lib/types'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
+import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { toSafeDetail } from '@/lib/safe-detail'
 
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
     id,
     parsed.data.patient_name,
     parsed.data.age,
+    parsed.data.contact_number,
     parsed.data.consultation_facility,
     parsed.data.yakap_registered ? 1 : 0,
     parsed.data.yakap_facility,
@@ -114,14 +116,28 @@ export async function POST(req: Request) {
     parsed.data.appointment_date,
     createdAt,
   ]
-  try {
-    await d1Run(
+  const insertMain = () =>
+    d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+        (id, patient_name, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 'walkin', ?)`,
       params
     )
+  try {
+    await insertMain()
   } catch (e) {
+    // Self-heal for the contact_number column, then retry the full insert.
+    if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          await insertMain()
+          return NextResponse.json({ success: true, id }, { status: 201 })
+        } catch (retryErr) {
+          e = retryErr
+        }
+      }
+    }
     const msg = e instanceof Error ? e.message : ''
     if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       try {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, User, MapPin, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
+import { Calendar, User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitFor } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -11,6 +11,7 @@ const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
 interface FormData {
   fullName: string
   age: string
+  contactNumber: string
   healthFacility: string
   yakapRegistered: boolean
   yakapFacility: string
@@ -163,6 +164,7 @@ export default function AppointmentForm() {
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     age: '',
+    contactNumber: '',
     healthFacility: '',
     yakapRegistered: false,
     yakapFacility: '',
@@ -278,6 +280,7 @@ export default function AppointmentForm() {
         body: JSON.stringify({
           patient_name: formData.fullName.trim(),
           age: formData.age,
+          contact_number: formData.contactNumber.trim(),
           consultation_facility: formData.healthFacility,
           yakap_registered: formData.yakapRegistered,
           yakap_facility: formData.yakapRegistered ? formData.yakapFacility : null,
@@ -339,7 +342,7 @@ export default function AppointmentForm() {
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   const stepsDone = [
-    formData.fullName.trim().length >= 2 && formData.age !== '',
+    formData.fullName.trim().length >= 2 && formData.age !== '' && formData.contactNumber.trim().length >= 7,
     formData.appointmentDate !== '' && formData.healthFacility !== '',
     true,
     formData.selectedTests.length > 0,
@@ -415,6 +418,7 @@ export default function AppointmentForm() {
               setFormData(prev => ({
                 fullName: '',
                 age: '',
+                contactNumber: '',
                 healthFacility: '',
                 yakapRegistered: false,
                 yakapFacility: '',
@@ -486,6 +490,22 @@ export default function AppointmentForm() {
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                 className={FIELD_CLASS}
                 placeholder="e.g. 34"
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              Contact Number <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="tel"
+                required
+                value={formData.contactNumber}
+                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                className={`${FIELD_CLASS} pl-10`}
+                placeholder="e.g. 0917 123 4567"
               />
             </div>
           </div>

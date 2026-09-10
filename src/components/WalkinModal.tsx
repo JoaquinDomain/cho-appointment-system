@@ -24,6 +24,7 @@ export default function WalkinModal({
 }) {
   const [fullName, setFullName] = useState('')
   const [age, setAge] = useState('')
+  const [contactNumber, setContactNumber] = useState('')
   const [facility, setFacility] = useState('')
   const [yakap, setYakap] = useState(false)
   const [yakapFacility, setYakapFacility] = useState('')
@@ -50,6 +51,7 @@ export default function WalkinModal({
         body: JSON.stringify({
           patient_name: fullName.trim(),
           age,
+          contact_number: contactNumber.trim(),
           consultation_facility: facility,
           yakap_registered: yakap,
           yakap_facility: yakap ? yakapFacility : null,
@@ -126,6 +128,10 @@ export default function WalkinModal({
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Date *</label>
                 <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={INPUT} />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Contact Number *</label>
+              <input required type="tel" value={contactNumber} onChange={e => setContactNumber(e.target.value)} className={INPUT} placeholder="e.g. 0917 123 4567" />
             </div>
 
             <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ export interface AppointmentRow {
   id: string
   patient_name: string
   age: number
+  contact_number?: string | null
   consultation_facility: string
   yakap_registered: number
   yakap_facility: string | null
@@ -27,6 +28,7 @@ export function mapAppointmentRow(row: AppointmentRow): Appointment {
     id: row.id,
     patient_name: row.patient_name,
     age: row.age,
+    contact_number: row.contact_number ?? '',
     consultation_facility: row.consultation_facility,
     yakap_registered: row.yakap_registered === 1,
     ...(row.yakap_facility ? { yakap_facility: row.yakap_facility } : {}),

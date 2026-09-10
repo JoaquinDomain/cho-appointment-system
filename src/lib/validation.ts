@@ -5,6 +5,7 @@ const MAX_TESTS = LABORATORY_TESTS.length
 export interface ValidatedAppointmentInput {
   patient_name: string
   age: number
+  contact_number: string
   consultation_facility: string
   yakap_registered: boolean
   yakap_facility: string | null
@@ -51,6 +52,24 @@ export function validateAppointmentInput(body: unknown): {
     typeof b.age === 'number' ? b.age : typeof b.age === 'string' ? Number(b.age) : NaN
   if (!Number.isInteger(ageNum) || ageNum < 1 || ageNum > 120) {
     errors.push('Age must be a whole number between 1 and 120.')
+  }
+
+  // contact_number: required, 7–15 digits (allows +, spaces, dashes, parens)
+  const rawContact =
+    typeof b.contact_number === 'string'
+      ? b.contact_number.trim()
+      : typeof (b as Record<string, unknown>).contactNumber === 'string'
+        ? String((b as Record<string, unknown>).contactNumber).trim()
+        : ''
+  const contactDigits = rawContact.replace(/\D/g, '')
+  if (
+    rawContact.length === 0 ||
+    rawContact.length > 20 ||
+    !/^[+()\-\s\d]+$/.test(rawContact) ||
+    contactDigits.length < 7 ||
+    contactDigits.length > 15
+  ) {
+    errors.push('Contact number must be 7–15 digits.')
   }
 
   // consultation_facility: must be in allowlist (accept legacy healthFacility key)
@@ -137,6 +156,7 @@ export function validateAppointmentInput(body: unknown): {
     data: {
       patient_name,
       age: ageNum as number,
+      contact_number: rawContact,
       consultation_facility: rawFacility,
       yakap_registered,
       yakap_facility,

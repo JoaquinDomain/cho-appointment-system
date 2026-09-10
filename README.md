@@ -81,7 +81,7 @@ npm start
 ## Database Schema
 
 The system uses D1 tables (see `d1/schema.sql`):
-- `appointments`: UUID id, patient name/age, consultation facility, YAKAP
+- `appointments`: UUID id, patient name/age/contact number, consultation facility, YAKAP
   status + facility, `selected_tests` (JSON array), appointment date,
   booking timestamp — with CHECK constraints and indexes
 - `admin_users`: admin email + scrypt password hash

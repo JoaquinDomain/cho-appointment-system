@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus, LayoutDashboard } from 'lucide-react'
+import { Search, Filter, Calendar, User, MapPin, Phone, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus, LayoutDashboard } from 'lucide-react'
 import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
 import QRScanner from './QRScanner'
 import WalkinModal from './WalkinModal'
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const [deleteError, setDeleteError] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ patient_name: '', age: '', consultation_facility: '', appointment_date: '' })
+  const [editForm, setEditForm] = useState({ patient_name: '', age: '', contact_number: '', consultation_facility: '', appointment_date: '' })
   const [editError, setEditError] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -277,6 +277,7 @@ export default function AdminDashboard() {
     setEditForm({
       patient_name: selectedAppointment.patient_name,
       age: String(selectedAppointment.age),
+      contact_number: selectedAppointment.contact_number ?? '',
       consultation_facility: selectedAppointment.consultation_facility,
       appointment_date: selectedAppointment.appointment_date,
     })
@@ -296,6 +297,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           patient_name: editForm.patient_name,
           age: Number(editForm.age),
+          contact_number: editForm.contact_number,
           consultation_facility: editForm.consultation_facility,
           yakap_registered: selectedAppointment.yakap_registered,
           yakap_facility: selectedAppointment.yakap_facility ?? null,
@@ -314,6 +316,7 @@ export default function AdminDashboard() {
         ...selectedAppointment,
         patient_name: editForm.patient_name.trim(),
         age: Number(editForm.age),
+        contact_number: editForm.contact_number.trim(),
         consultation_facility: editForm.consultation_facility,
         appointment_date: editForm.appointment_date,
       }
@@ -351,11 +354,11 @@ export default function AdminDashboard() {
         if (rows.length < 100 || all.length >= (json.total ?? 0) || all.length >= 2000) break
         p += 1
       }
-      const header = ['id', 'patient_name', 'age', 'consultation_facility', 'yakap_registered', 'yakap_facility', 'selected_tests', 'appointment_date', 'status', 'created_at']
+      const header = ['id', 'patient_name', 'age', 'contact_number', 'consultation_facility', 'yakap_registered', 'yakap_facility', 'selected_tests', 'appointment_date', 'status', 'created_at']
       const lines = [header.join(',')]
       for (const a of all) {
         lines.push(
-          [a.id, a.patient_name, a.age, a.consultation_facility, a.yakap_registered ? 'YES' : 'NO', a.yakap_facility ?? '', a.selected_tests.join('; '), a.appointment_date, a.status, a.created_at]
+          [a.id, a.patient_name, a.age, a.contact_number ?? '', a.consultation_facility, a.yakap_registered ? 'YES' : 'NO', a.yakap_facility ?? '', a.selected_tests.join('; '), a.appointment_date, a.status, a.created_at]
             .map(toCsvCell)
             .join(',')
         )
@@ -753,7 +756,7 @@ export default function AdminDashboard() {
                     >
                       {appointment.patient_name}
                     </button>
-                    <p className="text-sm text-gray-500">Age {appointment.age}</p>
+                    <p className="text-sm text-gray-500">Age {appointment.age}{appointment.contact_number ? ` · ${appointment.contact_number}` : ''}</p>
                   </div>
                   <span className="flex flex-col items-end gap-1">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -937,6 +940,13 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
+                    <Phone className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Contact Number</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.contact_number || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
                     <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Appointment Date</p>
@@ -1033,6 +1043,9 @@ export default function AdminDashboard() {
                       </label>
                       <label className="text-sm text-gray-700">Age
                         <input type="number" min={1} max={120} value={editForm.age} onChange={(e) => setEditForm(f => ({ ...f, age: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      </label>
+                      <label className="text-sm text-gray-700">Contact number
+                        <input type="tel" value={editForm.contact_number} onChange={(e) => setEditForm(f => ({ ...f, contact_number: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" placeholder="e.g. 0917 123 4567" />
                       </label>
                       <label className="text-sm text-gray-700">Facility
                         <select value={editForm.consultation_facility} onChange={(e) => setEditForm(f => ({ ...f, consultation_facility: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white">

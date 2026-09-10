@@ -9,6 +9,7 @@ import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appoin
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
+import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { verifyTurnstile } from '@/lib/turnstile'
 
@@ -133,6 +134,7 @@ export async function POST(req: Request) {
     id,
     parsed.data.patient_name,
     parsed.data.age,
+    parsed.data.contact_number,
     parsed.data.consultation_facility,
     parsed.data.yakap_registered ? 1 : 0,
     parsed.data.yakap_facility,
@@ -140,14 +142,28 @@ export async function POST(req: Request) {
     parsed.data.appointment_date,
     createdAt,
   ]
-  try {
-    await d1Run(
+  const insertMain = () =>
+    d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
+        (id, patient_name, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
       params
     )
+  try {
+    await insertMain()
   } catch (e) {
+    // Self-heal for the contact_number column, then retry the full insert.
+    if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          await insertMain()
+          return NextResponse.json({ success: true, id }, { status: 201 })
+        } catch (retryErr) {
+          e = retryErr
+        }
+      }
+    }
     const msg = e instanceof Error ? e.message : ''
     // Databases created before the status/source migrations lack those
     // columns (CREATE TABLE IF NOT EXISTS never backfills them).
@@ -155,8 +171,8 @@ export async function POST(req: Request) {
     // one-line remediation for the operator.
     if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       console.warn(
-        'appointments.status/source column missing — booking with legacy schema. ' +
-          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql and ./d1/migrate_source.sql'
+        'appointments.status/source/contact column missing — booking with legacy schema. ' +
+          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql, ./d1/migrate_source.sql and ./d1/migrate_contact.sql'
       )
       try {
         await d1Run(

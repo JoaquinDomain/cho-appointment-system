@@ -6,6 +6,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { mapAppointmentRow, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
+import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 
 // GET /api/appointments/[id] — admin-only single record (QR scan lookup).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -110,23 +111,41 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!parsed.ok) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
-  try {
-    const changed = await d1Run(
-      `UPDATE appointments SET patient_name = ?, age = ?, consultation_facility = ?,
+  const updateParams = [
+    parsed.data.patient_name,
+    parsed.data.age,
+    parsed.data.contact_number,
+    parsed.data.consultation_facility,
+    parsed.data.yakap_registered ? 1 : 0,
+    parsed.data.yakap_facility,
+    JSON.stringify(parsed.data.selected_tests),
+    parsed.data.appointment_date,
+    id,
+  ]
+  const updateMain = () =>
+    d1Run(
+      `UPDATE appointments SET patient_name = ?, age = ?, contact_number = ?, consultation_facility = ?,
         yakap_registered = ?, yakap_facility = ?, selected_tests = ?, appointment_date = ? WHERE id = ?`,
-      [
-        parsed.data.patient_name,
-        parsed.data.age,
-        parsed.data.consultation_facility,
-        parsed.data.yakap_registered ? 1 : 0,
-        parsed.data.yakap_facility,
-        JSON.stringify(parsed.data.selected_tests),
-        parsed.data.appointment_date,
-        id,
-      ]
+      updateParams
     )
+  try {
+    const changed = await updateMain()
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
+    // Self-heal for the contact_number column, then retry once.
+    if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          const changed = await updateMain()
+          if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
+          return NextResponse.json({ ok: true })
+        } catch (retryErr) {
+          console.error('Admin edit failed (post-migration retry):', retryErr)
+          return NextResponse.json({ error: 'Failed to update appointment.' }, { status: 500 })
+        }
+      }
+    }
     console.error('Admin edit failed:', e)
     return NextResponse.json({ error: 'Failed to update appointment.' }, { status: 500 })
   }

@@ -6,6 +6,7 @@ export interface Appointment {
   id: string
   patient_name: string
   age: number
+  contact_number: string
   consultation_facility: string
   yakap_registered: boolean
   yakap_facility?: string

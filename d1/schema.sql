@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
   patient_name TEXT NOT NULL CHECK (length(patient_name) BETWEEN 2 AND 100),
   age INTEGER NOT NULL CHECK (age BETWEEN 1 AND 120),
+  contact_number TEXT NOT NULL DEFAULT '' CHECK (length(contact_number) <= 20),
   consultation_facility TEXT NOT NULL CHECK (length(consultation_facility) BETWEEN 2 AND 120),
   yakap_registered INTEGER NOT NULL DEFAULT 0 CHECK (yakap_registered IN (0, 1)),
   yakap_facility TEXT,
