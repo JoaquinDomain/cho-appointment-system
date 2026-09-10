@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3 } from 'lucide-react'
+import { Search, Filter, Calendar, User, MapPin, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus } from 'lucide-react'
 import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
 import QRScanner from './QRScanner'
+import WalkinModal from './WalkinModal'
 
 const PAGE_SIZE = 25
 
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const [facilityFilter, setFacilityFilter] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [yakapOnly, setYakapOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState({ total: 0, today: 0, yakap: 0 })
@@ -54,12 +56,15 @@ export default function AdminDashboard() {
   const [showQuotas, setShowQuotas] = useState(false)
   const [quotaDate, setQuotaDate] = useState(() => todayLocal())
   const [quotaCounts, setQuotaCounts] = useState<Record<string, number>>({})
+  const [quotaWalkins, setQuotaWalkins] = useState<Record<string, number>>({})
+  const [quotaTotals, setQuotaTotals] = useState<Record<string, number>>({})
   const [quotaLoading, setQuotaLoading] = useState(false)
   const [quotaError, setQuotaError] = useState('')
+  const [showWalkin, setShowWalkin] = useState(false)
 
   // Server-side paginated + filtered list via admin-only API.
   // No direct database read from the browser; session cookie authenticates.
-  const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string, date: string, status: string) => {
+  const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string, date: string, status: string, yakap: boolean) => {
     setLoading(true)
     setError('')
     try {
@@ -70,6 +75,7 @@ export default function AdminDashboard() {
         ...(facility ? { facility } : {}),
         ...(date ? { date } : {}),
         ...(status ? { status } : {}),
+        ...(yakap ? { yakap: 'true' } : {}),
       })
       const [listRes, todayRes, yakapRes] = await Promise.all([
         fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin', cache: 'no-store' }),
@@ -106,8 +112,33 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter)
-  }, [fetchAppointments, page, debouncedSearch, facilityFilter, dateFilter, statusFilter])
+    void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly)
+  }, [fetchAppointments, page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly])
+
+  // Stat cards double as filters: total clears, today filters to today,
+  // YAKAP shows only YAKAP members.
+  const showAll = () => {
+    setPage(1)
+    setSearchTerm('')
+    setFacilityFilter('')
+    setDateFilter('')
+    setStatusFilter('')
+    setYakapOnly(false)
+  }
+  const showToday = () => {
+    setPage(1)
+    setYakapOnly(false)
+    setDateFilter(todayLocal())
+  }
+  const showYakap = () => {
+    setPage(1)
+    setDateFilter('')
+    setYakapOnly(true)
+  }
+  const todayStr = todayLocal()
+  const totalActive = !dateFilter && !yakapOnly
+  const todayActive = dateFilter === todayStr && !yakapOnly
+  const yakapActive = yakapOnly
 
   const fetchQuotas = useCallback(async (date: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return
@@ -124,6 +155,8 @@ export default function AdminDashboard() {
         throw new Error((json as { error?: string }).error ?? 'Failed to fetch quota data')
       }
       setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
+      setQuotaWalkins((json as { walkinCounts?: Record<string, number> }).walkinCounts ?? {})
+      setQuotaTotals((json as { totalCounts?: Record<string, number> }).totalCounts ?? {})
     } catch (err) {
       setQuotaError(err instanceof Error ? err.message : 'Failed to fetch quota data')
     } finally {
@@ -308,6 +341,7 @@ export default function AdminDashboard() {
           ...(facilityFilter ? { facility: facilityFilter } : {}),
           ...(dateFilter ? { date: dateFilter } : {}),
           ...(statusFilter ? { status: statusFilter } : {}),
+          ...(yakapOnly ? { yakap: 'true' } : {}),
         })
         const res = await fetch(`/api/appointments?${params.toString()}`, { credentials: 'same-origin' })
         if (!res.ok) throw new Error('Export failed.')
@@ -379,7 +413,7 @@ export default function AdminDashboard() {
           <p className="text-red-800">{error}</p>
           <button
             onClick={() => {
-              fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter)
+              fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly)
             }}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
@@ -411,7 +445,12 @@ export default function AdminDashboard() {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20">
+          <button
+            onClick={showAll}
+            aria-pressed={totalActive}
+            title="Show all appointments"
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20 cursor-pointer transition hover:brightness-110 ${totalActive ? 'ring-2 ring-white/70' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sky-200 text-xs sm:text-sm font-medium">Total Appointments</p>
@@ -422,8 +461,13 @@ export default function AdminDashboard() {
                 <Users className="w-6 h-6" />
               </div>
             </div>
-          </div>
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20">
+          </button>
+          <button
+            onClick={todayActive ? showAll : showToday}
+            aria-pressed={todayActive}
+            title="Show today's appointments"
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20 cursor-pointer transition hover:brightness-110 ${todayActive ? 'ring-2 ring-white/70' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-violet-200 text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
@@ -434,8 +478,13 @@ export default function AdminDashboard() {
                 <CalendarCheck className="w-6 h-6" />
               </div>
             </div>
-          </div>
-          <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20">
+          </button>
+          <button
+            onClick={yakapActive ? showAll : showYakap}
+            aria-pressed={yakapActive}
+            title="Show YAKAP-registered patients"
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20 cursor-pointer transition hover:brightness-110 ${yakapActive ? 'ring-2 ring-white/70' : ''}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-emerald-200 text-xs sm:text-sm font-medium">YAKAP Registered</p>
@@ -446,7 +495,7 @@ export default function AdminDashboard() {
                 <HeartHandshake className="w-6 h-6" />
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* QR Scanner */}
@@ -464,6 +513,13 @@ export default function AdminDashboard() {
         {/* Actions */}
         <div className="flex flex-wrap gap-2 mb-4">
           <button
+            onClick={() => setShowWalkin(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 text-white text-sm font-semibold rounded-xl hover:bg-sky-800 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Walk-in
+          </button>
+          <button
             onClick={handleExportCsv}
             disabled={exporting}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-60 transition-colors"
@@ -478,6 +534,15 @@ export default function AdminDashboard() {
           >
             <BarChart3 className="w-4 h-4" />
             {showQuotas ? 'Hide Quotas' : 'Daily Quotas'}
+          </button>
+          <button
+            onClick={() => { setPage(1); setYakapOnly(v => !v) }}
+            aria-pressed={yakapOnly}
+            title="Show only YAKAP-registered patients"
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${yakapOnly ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+          >
+            <HeartHandshake className="w-4 h-4" />
+            YAKAP only
           </button>
         </div>
 
@@ -504,30 +569,39 @@ export default function AdminDashboard() {
             {quotaError && <p className="text-sm text-red-700 mb-2">{quotaError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
-                const booked = quotaCounts[t.label] ?? 0
+                // Online counts exclude walk-ins; totals include everything.
+                const booked = quotaTotals[t.label] ?? quotaCounts[t.label] ?? 0
+                const walkins = quotaWalkins[t.label] ?? 0
                 // Total capacity vs online share (half held for walk-ins).
                 const onlineLimit = onlineLimitFor(t.limit)
-                const onlineAvailable = Math.max(0, onlineLimit - booked)
+                const onlineBooked = quotaCounts[t.label] ?? Math.max(0, booked - walkins)
+                const onlineAvailable = Math.max(0, onlineLimit - onlineBooked)
                 const available = Math.max(0, t.limit - booked)
                 const held = t.limit - onlineLimit
+                const heldLeft = Math.max(0, held - walkins)
                 const pct = onlineLimit > 0 ? Math.round((onlineAvailable / onlineLimit) * 100) : 0
                 const onlineFull = onlineAvailable <= 0
                 return (
                   <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'}`}>
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="font-semibold text-slate-900 truncate" title={t.label}>{t.label}</span>
-                      {onlineFull ? (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white">
-                          Online Full
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {onlineFull ? (
+                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white">
+                            Online Full
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums">
+                            {onlineAvailable} online left
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border tabular-nums ${heldLeft <= 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>
+                          {heldLeft} walk-in left
                         </span>
-                      ) : (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums">
-                          {onlineAvailable} online left
-                        </span>
-                      )}
+                      </span>
                     </div>
                     <div className="mt-1.5 text-xs text-slate-500 tabular-nums">
-                      Total {available}/{t.limit} left. {held} held for walk in.
+                      Total {available}/{t.limit} left.
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-red-500' : pct <= 25 ? 'bg-amber-500' : 'bg-sky-600'}`} style={{ width: `${pct}%` }} />
@@ -610,6 +684,11 @@ export default function AdminDashboard() {
                   Status {statusFilter} ✕
                 </button>
               )}
+              {yakapOnly && (
+                <button onClick={() => { setPage(1); setYakapOnly(false) }} className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full hover:bg-emerald-200">
+                  YAKAP only ✕
+                </button>
+              )}
               <button
                 onClick={() => { setPage(1); setDateFilter(todayLocal()) }}
                 className="text-xs px-3 py-1.5 bg-sky-50 text-sky-800 font-semibold rounded-full hover:bg-sky-100"
@@ -617,7 +696,7 @@ export default function AdminDashboard() {
                 Today
               </button>
               <button
-                onClick={() => { setPage(1); setSearchTerm(''); setFacilityFilter(''); setDateFilter(''); setStatusFilter('') }}
+                onClick={() => { setPage(1); setSearchTerm(''); setFacilityFilter(''); setDateFilter(''); setStatusFilter(''); setYakapOnly(false) }}
                 className="text-xs px-3 py-1.5 text-slate-500 hover:text-slate-800 underline underline-offset-2"
               >
                 Clear all
@@ -628,7 +707,7 @@ export default function AdminDashboard() {
             <span className="tabular-nums">Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
             <span className="inline-flex gap-2">
               <button
-                onClick={() => { void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter) }}
+                onClick={() => { void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly) }}
                 disabled={loading}
                 className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
               >
@@ -779,8 +858,8 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{formatDate(appointment.appointment_date)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.consultation_facility}</div>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-500 max-w-[12rem] truncate" title={appointment.consultation_facility}>{appointment.consultation_facility}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -796,8 +875,8 @@ export default function AdminDashboard() {
                           {appointment.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500 max-w-xs truncate">
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-500 max-w-[10rem] truncate" title={appointment.selected_tests.join(', ')}>
                           {appointment.selected_tests.join(', ')}
                         </div>
                       </td>
@@ -805,7 +884,7 @@ export default function AdminDashboard() {
                         <div className="text-sm text-gray-500">{formatDateTime(appointment.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-gray-900">{appointment.id}</div>
+                        <div className="text-sm font-mono text-gray-900" title={appointment.id}>{appointment.id.slice(0, 8)}…</div>
                       </td>
                     </tr>
                   ))
@@ -1025,6 +1104,15 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        )}
+        {showWalkin && (
+          <WalkinModal
+            onClose={() => setShowWalkin(false)}
+            onCreated={() => {
+              setPage(1)
+              void fetchAppointments(1, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly)
+            }}
+          />
         )}
       </div>
     </div>

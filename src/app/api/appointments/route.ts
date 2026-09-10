@@ -8,7 +8,8 @@ import { TEST_CONFIG, onlineLimitFor } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
-import { countBookedTests, type QuotaRow } from '@/lib/quota-count'
+import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
+import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { verifyTurnstile } from '@/lib/turnstile'
 
 // POST /api/appointments — public booking: validated + quota-checked +
@@ -53,19 +54,37 @@ export async function POST(req: Request) {
 
   let existing: QuotaRow[]
   try {
-    // Status-aware read so cancelled bookings free their slot.
-    // Pre-migration databases lack the column — fall back to the legacy read.
+    // Status+source-aware read: cancelled frees slots, online counts exclude
+    // walk-ins so the held-back half is never eaten by web bookings.
+    // Pre-migration databases lack the columns — self-heal, then legacy read.
     try {
       existing = await d1Query<QuotaRow>(
-        'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
+        'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
         [parsed.data.appointment_date]
       )
     } catch (e) {
-      if (!isMissingStatusColumn(e instanceof Error ? e.message : '')) throw e
-      existing = await d1Query<QuotaRow>(
-        'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
-        [parsed.data.appointment_date]
-      )
+      const msg = e instanceof Error ? e.message : ''
+      if (isMissingSourceColumn(msg)) {
+        await ensureSourceColumn()
+        try {
+          existing = await d1Query<QuotaRow>(
+            'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
+            [parsed.data.appointment_date]
+          )
+        } catch {
+          existing = await d1Query<QuotaRow>(
+            'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
+            [parsed.data.appointment_date]
+          )
+        }
+      } else if (isMissingStatusColumn(msg)) {
+        existing = await d1Query<QuotaRow>(
+          'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
+          [parsed.data.appointment_date]
+        )
+      } else {
+        throw e
+      }
     }
   } catch (e) {
     console.error('Quota check failed:', e)
@@ -84,7 +103,8 @@ export async function POST(req: Request) {
   }
 
   // Same counting rules as the public quotas API (see lib/quota-count).
-  const counts = countBookedTests(existing)
+  // Online share only — walk-ins don't consume web slots anymore.
+  const counts = countBookedTestsBySource(existing).online
 
   const testConfigs = Object.values(TEST_CONFIG)
   const overLimit: string[] = []
@@ -123,22 +143,20 @@ export async function POST(req: Request) {
   try {
     await d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+        (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
       params
     )
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
-    // Databases created before the status-workflow migration lack the
-    // `status` column (CREATE TABLE IF NOT EXISTS never backfills it).
-    // D1/SQLite phrases this as "no such column: status" or
-    // "table appointments has no column named status" — handle both.
+    // Databases created before the status/source migrations lack those
+    // columns (CREATE TABLE IF NOT EXISTS never backfills them).
     // Retry the legacy shape so booking still succeeds, and log the
     // one-line remediation for the operator.
-    if (isMissingStatusColumn(msg)) {
+    if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       console.warn(
-        'appointments.status column missing — booking with legacy schema. ' +
-          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql'
+        'appointments.status/source column missing — booking with legacy schema. ' +
+          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql and ./d1/migrate_source.sql'
       )
       try {
         await d1Run(

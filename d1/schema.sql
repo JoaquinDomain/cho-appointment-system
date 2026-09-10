@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   selected_tests TEXT NOT NULL, -- JSON array of test labels
   appointment_date TEXT NOT NULL, -- YYYY-MM-DD
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','completed','cancelled')),
+  source TEXT NOT NULL DEFAULT 'online' CHECK (source IN ('online','walkin')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
