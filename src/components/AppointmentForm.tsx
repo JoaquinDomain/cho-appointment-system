@@ -41,7 +41,7 @@ function StepCard({
 }: {
   step: string
   title: string
-  subtitle: string
+  subtitle?: string
   done: boolean
   children: React.ReactNode
 }) {
@@ -57,7 +57,7 @@ function StepCard({
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-[13px] font-bold text-slate-900 uppercase tracking-wider">{title}</h2>
-          <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+          {subtitle ? <p className="text-xs text-slate-500 truncate">{subtitle}</p> : null}
         </div>
       </div>
       <div className="p-5">{children}</div>
@@ -459,7 +459,7 @@ export default function AppointmentForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-slate-50/60">
-        <StepCard step="1" title="Patient Information" subtitle="Who is this appointment for" done={stepsDone[0]}>
+        <StepCard step="1" title="Patient Information" done={stepsDone[0]}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -511,7 +511,7 @@ export default function AppointmentForm() {
           </div>
         </StepCard>
 
-        <StepCard step="2" title="Schedule and Facility" subtitle="When and where you were consulted" done={stepsDone[1]}>
+        <StepCard step="2" title="Schedule and Facility" done={stepsDone[1]}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -609,7 +609,6 @@ export default function AppointmentForm() {
         <StepCard
           step="4"
           title={`Laboratory Tests${formData.selectedTests.length > 0 ? ` (${formData.selectedTests.length} selected)` : ''}`}
-          subtitle="Half of daily slots are held for walk-ins"
           done={stepsDone[3]}
         >
           <div className="relative mb-3">
