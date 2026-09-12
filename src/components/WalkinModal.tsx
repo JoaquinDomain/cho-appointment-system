@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, AlertCircle, UserPlus } from 'lucide-react'
-import { HEALTH_FACILITIES, TEST_CONFIG } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, isOnlineOnly } from '@/lib/types'
 
 function todayLocal(): string {
   const d = new Date()
@@ -151,13 +151,16 @@ export default function WalkinModal({
               <label className="block text-sm font-semibold text-slate-700 mb-1">Tests * ({tests.length} selected)</label>
               <input type="search" value={search} onChange={e => setSearch(e.target.value)} className={INPUT} placeholder="Search tests..." aria-label="Search tests" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2 max-h-56 overflow-y-auto border border-slate-200 rounded-xl p-2">
-                {filtered.map(c => (
-                  <label key={c.label} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sky-50 cursor-pointer text-sm text-slate-700">
-                    <input type="checkbox" checked={tests.includes(c.label)} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-sky-700" />
+                {filtered.map(c => {
+                  const blocked = isOnlineOnly(c.label)
+                  return (
+                  <label key={c.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-slate-700 ${blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sky-50 cursor-pointer'}`}>
+                    <input type="checkbox" checked={tests.includes(c.label)} disabled={blocked} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-sky-700 disabled:cursor-not-allowed" />
                     <span className="truncate">{c.label}</span>
-                    <span className="ml-auto text-[11px] text-slate-400 tabular-nums">cap {c.limit}</span>
+                    <span className="ml-auto text-[11px] text-slate-400 tabular-nums">{blocked ? 'online only' : `cap ${c.limit}`}</span>
                   </label>
-                ))}
+                  )
+                })}
                 {filtered.length === 0 && <p className="text-sm text-slate-400 p-2">No tests match.</p>}
               </div>
             </div>

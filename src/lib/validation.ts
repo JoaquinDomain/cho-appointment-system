@@ -1,4 +1,4 @@
-import { HEALTH_FACILITIES, LABORATORY_TESTS, APPOINTMENT_STATUSES, type AppointmentStatus } from './types'
+import { HEALTH_FACILITIES, LABORATORY_TESTS, APPOINTMENT_STATUSES, ECG_LABEL, ECG_WEEKDAY, type AppointmentStatus } from './types'
 
 const MAX_TESTS = LABORATORY_TESTS.length
 
@@ -105,7 +105,7 @@ export function validateAppointmentInput(body: unknown): {
     else yakap_facility = rawYakap
   }
 
-  // selected_tests: 1–17 items, each in allowlist, deduped
+  // selected_tests: 1 to N items (N = number of configured tests), each in allowlist, deduped
   const rawTests = Array.isArray(b.selected_tests)
     ? b.selected_tests
     : Array.isArray((b as Record<string, unknown>).selectedTests)
@@ -145,6 +145,8 @@ export function validateAppointmentInput(body: unknown): {
       errors.push('Appointment date cannot be in the past.')
     } else if (parsed > max) {
       errors.push(`Appointment date cannot be more than ${MAX_FUTURE_DAYS} days out.`)
+    } else if (selected_tests.includes(ECG_LABEL) && parsed.getDay() !== ECG_WEEKDAY) {
+      errors.push('ECG is available on Wednesdays only (1:00–4:00 PM). Please choose a Wednesday.')
     }
   }
 

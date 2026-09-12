@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar, User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
-import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitFor } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 import TurnstileWidget from '@/components/TurnstileWidget'
 
@@ -211,14 +211,15 @@ export default function AppointmentForm() {
             setQuotasLoaded(true)
 
             // Deselect any tests whose online share is fully booked for the
-            // chosen date (half of capacity is reserved for walk-ins).
+            // chosen date (half of capacity is reserved for walk-ins,
+            // except online-only tests like ECG with the full limit online).
             const testConfigs = Object.values(TEST_CONFIG)
             setFormData(prev => {
               const validSelectedTests = prev.selectedTests.filter(testLabel => {
                 const config = testConfigs.find(t => t.label === testLabel)
                 if (!config) return true
                 const count = newCounts[testLabel] || 0
-                return count < onlineLimitFor(config.limit)
+                return count < onlineLimitForTest(config.limit, config.label)
               })
 
               if (validSelectedTests.length !== prev.selectedTests.length) {
@@ -253,7 +254,7 @@ export default function AppointmentForm() {
     if (quotasLoaded && formData.appointmentDate) {
       const full = formData.selectedTests.filter(label => {
         const cfg = Object.values(TEST_CONFIG).find(t => t.label === label)
-        return cfg && (testCounts[label] || 0) >= onlineLimitFor(cfg.limit)
+        return cfg && (testCounts[label] || 0) >= onlineLimitForTest(cfg.limit, cfg.label)
       })
       if (full.length > 0) {
         setSubmitError(
@@ -353,6 +354,14 @@ export default function AppointmentForm() {
     c.label.toLowerCase().includes(testSearch.trim().toLowerCase())
   )
 
+  // ECG runs Wednesday afternoons only — warn before submit (server enforces too).
+  const ecgSelected = formData.selectedTests.includes(ECG_LABEL)
+  const ecgDayMismatch =
+    ecgSelected &&
+    formData.appointmentDate !== '' &&
+    new Date(`${formData.appointmentDate}T00:00:00`).getDay() !== ECG_WEEKDAY
+  const ecgHasOtherTests = ecgSelected && formData.selectedTests.some(t => t !== ECG_LABEL)
+
   if (submitSuccess) {
     return (
       <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden animate-fade-up">
@@ -362,7 +371,9 @@ export default function AppointmentForm() {
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight">Appointment Confirmed</h2>
           <p className="text-sky-50 text-sm mt-1">
-            {formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.
+            {ecgSelected
+              ? `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} — ECG is done 1:00–4:00 PM${ecgHasOtherTests ? '; other tests from 8:00 AM' : ''}. Please arrive on time.`
+              : `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.`}
           </p>
         </div>
 
@@ -649,6 +660,12 @@ export default function AppointmentForm() {
               </button>
             )}
           </div>
+          {ecgDayMismatch && (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              ECG is available on Wednesdays only (1:00–4:00 PM). Please choose a Wednesday.
+            </p>
+          )}
           {loadingQuotas && (
             <p className="text-xs text-sky-600 mb-2.5 animate-pulse">Checking test availability for selected date...</p>
           )}
@@ -661,8 +678,9 @@ export default function AppointmentForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filteredTests.map(config => {
                 const test = config.label
-                // Online-bookable share only; remainder is held for walk-ins.
-                const limit = onlineLimitFor(config.limit)
+                // Online-bookable share only (full limit for online-only tests like
+                // ECG); remainder is held for walk-ins.
+                const limit = onlineLimitForTest(config.limit, config.label)
                 // Only trust counts actually loaded for the selected date —
                 // never display a "0 booked" that is just missing data.
                 const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
@@ -701,6 +719,11 @@ export default function AppointmentForm() {
                               ? `${availableCount} of ${limit} online slots left`
                               : `Up to ${limit} online per day`}
                           </span>
+                          {test === ECG_LABEL && (
+                            <span className="text-[11px] font-semibold text-sky-700">
+                              Wednesdays 1–4 PM only
+                            </span>
+                          )}
                         </div>
                       </div>
                       {config.requiresFasting ? (
@@ -779,7 +802,7 @@ export default function AppointmentForm() {
           </div>
           <button
             type="submit"
-            disabled={isSubmitting || formData.selectedTests.length === 0}
+            disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch}
             className="w-full px-6 py-4 bg-gradient-to-r from-sky-800 to-cyan-600 text-white rounded-xl hover:from-sky-900 hover:to-cyan-700 transition-all hover:shadow-xl hover:shadow-sky-500/25 hover:-translate-y-0.5 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-bold text-base shadow-lg"
           >
             {isSubmitting ? (

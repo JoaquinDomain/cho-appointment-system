@@ -4,7 +4,7 @@ import { d1Query, d1Run } from '@/lib/d1'
 import { requireAdmin } from '@/lib/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
-import { TEST_CONFIG, onlineLimitFor } from '@/lib/types'
+import { TEST_CONFIG, onlineLimitForTest } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
@@ -111,10 +111,9 @@ export async function POST(req: Request) {
   const overLimit: string[] = []
   for (const label of parsed.data.selected_tests) {
     const config = testConfigs.find((t) => t.label === label)
-    // Only half of daily capacity is bookable online — the rest is
-    // reserved for walk-ins. Block online booking once the online share
-    // is full so the patient picks another day.
-    const onlineLimit = config ? onlineLimitFor(config.limit) : 0
+    // Online-only tests (ECG) use the full daily limit — nothing is held
+    // back for walk-ins. All other tests use the online half.
+    const onlineLimit = config ? onlineLimitForTest(config.limit, label) : 0
     if (config && (counts[label] || 0) >= onlineLimit) {
       overLimit.push(`${label} (Online limit: ${onlineLimit}, Booked: ${counts[label]})`)
     }

@@ -47,8 +47,28 @@ export const TEST_CONFIG = {
   hiv: { label: 'HIV Test', limit: 50, requiresFasting: false },
   pregnancy: { label: 'Pregnancy Test', limit: 50, requiresFasting: false },
   gram_staining: { label: 'Gram Staining', limit: 50, requiresFasting: false },
-  pap_smear: { label: 'Pap Smear', limit: 10, requiresFasting: false }
+  pap_smear: { label: 'Pap Smear', limit: 10, requiresFasting: false },
+  ecg: { label: 'ECG', limit: 15, requiresFasting: false },
 } as const
+
+// ECG runs Wednesday afternoons only (1:00–4:00 PM) — enforced in validation.
+export const ECG_LABEL = TEST_CONFIG.ecg.label
+export const ECG_WEEKDAY = 3 // 0 = Sunday … 6 = Saturday; 3 = Wednesday
+
+// Tests that are online-booking only: no walk-in quota is held back, the
+// full daily limit is bookable online, and the walk-in route rejects them.
+export const ONLINE_ONLY_LABELS: readonly string[] = [TEST_CONFIG.ecg.label]
+
+export function isOnlineOnly(label: string): boolean {
+  return ONLINE_ONLY_LABELS.includes(label)
+}
+
+// Online-bookable share of a test's daily capacity: half, except
+// online-only tests where the full limit is bookable online.
+export function onlineLimitForTest(totalLimit: number, label: string): number {
+  if (isOnlineOnly(label)) return totalLimit
+  return onlineLimitFor(totalLimit)
+}
 
 export type TestKey = keyof typeof TEST_CONFIG
 

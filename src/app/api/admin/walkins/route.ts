@@ -4,7 +4,7 @@ import { d1Query, d1Run } from '@/lib/d1'
 import { requireAdmin } from '@/lib/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
-import { TEST_CONFIG, onlineLimitFor } from '@/lib/types'
+import { TEST_CONFIG, onlineLimitFor, isOnlineOnly } from '@/lib/types'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
@@ -37,6 +37,15 @@ export async function POST(req: Request) {
   const parsed = validateAppointmentInput(body)
   if (!parsed.ok) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
+  }
+
+  // Online-only tests (ECG) can never be walk-ins — no walk-in quota exists.
+  const onlineOnly = parsed.data.selected_tests.filter(isOnlineOnly)
+  if (onlineOnly.length > 0) {
+    return NextResponse.json(
+      { error: `${onlineOnly.join(', ')} is available via online booking only and cannot be registered as a walk-in.` },
+      { status: 400 }
+    )
   }
 
   let existing: QuotaRow[]
