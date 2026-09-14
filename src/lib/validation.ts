@@ -1,18 +1,9 @@
 import { HEALTH_FACILITIES, LABORATORY_TESTS, APPOINTMENT_STATUSES, ECG_LABEL, ECG_WEEKDAY, type AppointmentStatus } from './types'
+import { unavailableDateReason } from './holidays'
+
+export { unavailableDateReason } from './holidays'
 
 const MAX_TESTS = LABORATORY_TESTS.length
-
-export interface ValidatedAppointmentInput {
-  patient_name: string
-  age: number
-  contact_number: string
-  consultation_facility: string
-  yakap_registered: boolean
-  yakap_facility: string | null
-  selected_tests: string[]
-  appointment_date: string // YYYY-MM-DD
-}
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const FACILITIES = new Set<string>(HEALTH_FACILITIES as readonly string[])
 const TESTS = new Set<string>(LABORATORY_TESTS as readonly string[])
@@ -25,10 +16,20 @@ function toLocalDay(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export function validateAppointmentInput(body: unknown): {
-  ok: true
-  data: ValidatedAppointmentInput
-} | { ok: false; errors: string[] } {
+export interface ValidatedAppointmentInput {
+  patient_name: string
+  age: number
+  contact_number: string
+  consultation_facility: string
+  yakap_registered: boolean
+  yakap_facility: string | null
+  selected_tests: string[]
+  appointment_date: string // YYYY-MM-DD
+}
+
+export function validateAppointmentInput(body: unknown):
+  | { ok: true; data: ValidatedAppointmentInput }
+  | { ok: false; errors: string[] } {
   const errors: string[] = []
   if (!body || typeof body !== 'object') {
     return { ok: false, errors: ['Invalid request body.'] }
@@ -147,6 +148,9 @@ export function validateAppointmentInput(body: unknown): {
       errors.push(`Appointment date cannot be more than ${MAX_FUTURE_DAYS} days out.`)
     } else if (selected_tests.includes(ECG_LABEL) && parsed.getDay() !== ECG_WEEKDAY) {
       errors.push('ECG is available on Wednesdays only (1:00–4:00 PM). Please choose a Wednesday.')
+    } else {
+      const reason = unavailableDateReason(rawDate)
+      if (reason) errors.push(reason)
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Calendar, User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
-import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 import TurnstileWidget from '@/components/TurnstileWidget'
 
@@ -249,6 +249,11 @@ export default function AppointmentForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Lab closed weekends + PH holidays — stop here so the user picks another day.
+    if (closedDayReason) {
+      setSubmitError(`${closedDayReason} Please choose another day.`)
+      return
+    }
     // Client-side guard: never let a fully-booked-online test submit for
     // this date — force picking another day before hitting the server.
     if (quotasLoaded && formData.appointmentDate) {
@@ -341,6 +346,13 @@ export default function AppointmentForm() {
 
   const testConfigs = Object.values(TEST_CONFIG)
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const maxStr = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 180)
+    return d.toISOString().split('T')[0]
+  }, [])
+  // Lab is closed weekends + PH holidays — block picking/submitting those days.
+  const closedDayReason = formData.appointmentDate ? unavailableDateReason(formData.appointmentDate) : null
 
   const stepsDone = [
     formData.fullName.trim().length >= 2 && formData.age !== '' && formData.contactNumber.trim().length >= 7,
@@ -534,13 +546,17 @@ export default function AppointmentForm() {
                   type="date"
                   required
                   min={todayStr}
+                  max={maxStr}
                   value={formData.appointmentDate}
                   onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
                   className={`${FIELD_CLASS} pl-10`}
                 />
               </div>
-              {formData.appointmentDate && (
+              {formData.appointmentDate && !closedDayReason && (
                 <p className="mt-1.5 text-xs font-medium text-sky-700">{prettyDate(formData.appointmentDate)}</p>
+              )}
+              {closedDayReason && (
+                <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
               )}
             </div>
             <div>
@@ -664,6 +680,12 @@ export default function AppointmentForm() {
             <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               ECG is available on Wednesdays only (1:00–4:00 PM). Please choose a Wednesday.
+            </p>
+          )}
+          {closedDayReason && (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {closedDayReason}
             </p>
           )}
           {loadingQuotas && (
@@ -802,7 +824,7 @@ export default function AppointmentForm() {
           </div>
           <button
             type="submit"
-            disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch}
+            disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch || Boolean(closedDayReason)}
             className="w-full px-6 py-4 bg-gradient-to-r from-sky-800 to-cyan-600 text-white rounded-xl hover:from-sky-900 hover:to-cyan-700 transition-all hover:shadow-xl hover:shadow-sky-500/25 hover:-translate-y-0.5 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-bold text-base shadow-lg"
           >
             {isSubmitting ? (

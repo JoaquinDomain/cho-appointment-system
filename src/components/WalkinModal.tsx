@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, AlertCircle, UserPlus } from 'lucide-react'
-import { HEALTH_FACILITIES, TEST_CONFIG, isOnlineOnly } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, isOnlineOnly, unavailableDateReason } from '@/lib/types'
 
 function todayLocal(): string {
   const d = new Date()
@@ -35,12 +35,19 @@ export default function WalkinModal({
   const [error, setError] = useState('')
   const [createdId, setCreatedId] = useState('')
 
+  // Lab is closed weekends + PH holidays — same rule as online booking.
+  const closedDayReason = date ? unavailableDateReason(date) : null
+
   const toggleTest = (label: string) => {
     setTests(prev => (prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]))
   }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (closedDayReason) {
+      setError(`${closedDayReason} Please choose another day.`)
+      return
+    }
     setSubmitting(true)
     setError('')
     try {
@@ -127,6 +134,9 @@ export default function WalkinModal({
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Date *</label>
                 <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={INPUT} />
+                {closedDayReason && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
+                )}
               </div>
             </div>
             <div>
@@ -174,7 +184,7 @@ export default function WalkinModal({
 
             <button
               type="submit"
-              disabled={submitting || tests.length === 0}
+              disabled={submitting || tests.length === 0 || Boolean(closedDayReason)}
               className="w-full px-6 py-3.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Registering...' : 'Register Walk-in (Confirmed)'}
