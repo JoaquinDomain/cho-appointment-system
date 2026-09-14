@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
+import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
+import DatePicker from '@/components/DatePicker'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 import TurnstileWidget from '@/components/TurnstileWidget'
@@ -249,6 +250,11 @@ export default function AppointmentForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Custom calendar has no native `required` — guard here instead.
+    if (!formData.appointmentDate) {
+      setSubmitError('Please choose your preferred appointment date.')
+      return
+    }
     // Lab closed weekends + PH holidays — stop here so the user picks another day.
     if (closedDayReason) {
       setSubmitError(`${closedDayReason} Please choose another day.`)
@@ -535,26 +541,14 @@ export default function AppointmentForm() {
         </StepCard>
 
         <StepCard step="2" title="Schedule and Facility" done={stepsDone[1]}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Appointment Date <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="date"
-                  required
-                  min={todayStr}
-                  max={maxStr}
-                  value={formData.appointmentDate}
-                  onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
-                  className={`${FIELD_CLASS} pl-10`}
-                />
-              </div>
-              {formData.appointmentDate && !closedDayReason && (
-                <p className="mt-1.5 text-xs font-medium text-sky-700">{prettyDate(formData.appointmentDate)}</p>
-              )}
+              <DatePicker
+                value={formData.appointmentDate}
+                min={todayStr}
+                max={maxStr}
+                onChange={(iso) => setFormData({ ...formData, appointmentDate: iso })}
+              />
               {closedDayReason && (
                 <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
               )}
