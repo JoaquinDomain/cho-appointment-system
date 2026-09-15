@@ -61,18 +61,32 @@ function loadScript(retries = 3): Promise<void> {
 export default function TurnstileWidget({
   onToken,
   onExpire,
+  onUnavailable,
 }: {
   onToken: (token: string) => void
   onExpire: () => void
+  /** Called when the challenge service is unreachable (not just expired) —
+   * the form can then offer a guarded fallback submit path. */
+  onUnavailable: () => void
 }) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
   const mountRef = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
-  const cbRef = useRef({ onToken, onExpire })
+  const failures = useRef(0)
+  const cbRef = useRef({ onToken, onExpire, onUnavailable })
   const [failed, setFailed] = useState(false)
   useEffect(() => {
-    cbRef.current = { onToken, onExpire }
-  }, [onToken, onExpire])
+    cbRef.current = { onToken, onExpire, onUnavailable }
+  }, [onToken, onExpire, onUnavailable])
+
+  const noteFailure = useCallback(() => {
+    failures.current += 1
+    setFailed(true)
+    cbRef.current.onExpire()
+    // Two consecutive failures (even across a manual retry) means the
+    // device/network can't reach Cloudflare — stop blocking on it.
+    if (failures.current >= 2) cbRef.current.onUnavailable()
+  }, [])
 
   const renderWidget = useCallback(() => {
     if (!mountRef.current || !window.turnstile || !siteKey) return false
@@ -97,6 +111,7 @@ export default function TurnstileWidget({
         'retry-interval': 2000,
         'refresh-expired': 'auto',
         callback: (t: string) => {
+          failures.current = 0
           setFailed(false)
           cbRef.current.onToken(t)
         },
@@ -106,25 +121,25 @@ export default function TurnstileWidget({
         },
         'error-callback': () => {
           // Widget iframe loaded but couldn't reach Cloudflare
-          // (offline blip, in-app browser, adblock/DNS filter).
-          setFailed(true)
-          cbRef.current.onExpire()
+          // (offline blip, in-app browser, adblock/DNS filter,
+          // carrier-level block). NOT a normal expiry.
+          noteFailure()
         },
         'timeout-callback': () => {
-          setFailed(true)
-          cbRef.current.onExpire()
+          noteFailure()
         },
       })
       return true
     } catch {
-      setFailed(true)
+      noteFailure()
       return false
     }
-  }, [siteKey])
+  }, [siteKey, noteFailure])
 
   useEffect(() => {
     if (!siteKey) return
     let cancelled = false
+    failures.current = 0
     setFailed(false)
     loadScript(3)
       .then(() => {
@@ -132,12 +147,12 @@ export default function TurnstileWidget({
           // Small delay: on mobile WebViews the DOM/iframe isn't always
           // ready the instant api.js fires onload.
           setTimeout(() => {
-            if (!cancelled && !renderWidget()) setFailed(true)
+            if (!cancelled && !renderWidget()) noteFailure()
           }, 300)
         }
       })
       .catch(() => {
-        if (!cancelled) setFailed(true)
+        if (!cancelled) noteFailure()
       })
     return () => {
       cancelled = true
@@ -150,7 +165,7 @@ export default function TurnstileWidget({
         widgetId.current = null
       }
     }
-  }, [siteKey, renderWidget])
+  }, [siteKey, renderWidget, noteFailure])
 
   const retry = useCallback(() => {
     setFailed(false)
@@ -159,14 +174,16 @@ export default function TurnstileWidget({
       if (!renderWidget()) {
         loadScript(3)
           .then(() => renderWidget())
-          .catch(() => setFailed(true))
+          .catch(() => noteFailure())
       }
     } else {
       loadScript(3)
-        .then(() => renderWidget())
-        .catch(() => setFailed(true))
+        .then(() => {
+          if (!renderWidget()) noteFailure()
+        })
+        .catch(() => noteFailure())
     }
-  }, [renderWidget])
+  }, [renderWidget, noteFailure])
 
   if (!siteKey) return null
   return (

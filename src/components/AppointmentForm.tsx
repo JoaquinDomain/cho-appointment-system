@@ -183,6 +183,9 @@ export default function AppointmentForm() {
   const [qrCodeId, setQrCodeId] = useState('')
   const [testSearch, setTestSearch] = useState('')
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false)
+  const [honeypot, setHoneypot] = useState('')
+  const formStartedAt = useRef(Date.now())
 
   useEffect(() => {
     let ignore = false
@@ -277,7 +280,7 @@ export default function AppointmentForm() {
     setIsSubmitting(true)
     setSubmitError('')
 
-    if (TURNSTILE_ENABLED && !turnstileToken) {
+    if (TURNSTILE_ENABLED && !turnstileToken && !turnstileUnavailable) {
       setSubmitError('Please complete the human verification check below.')
       setIsSubmitting(false)
       return
@@ -299,6 +302,13 @@ export default function AppointmentForm() {
           selected_tests: formData.selectedTests,
           appointment_date: formData.appointmentDate,
           ...(TURNSTILE_ENABLED ? { turnstileToken } : {}),
+          ...(turnstileUnavailable
+            ? {
+                turnstileUnavailable: true,
+                website: honeypot,
+                formStartedAt: formStartedAt.current,
+              }
+            : {}),
         }),
       })
       const json = await res.json().catch(() => ({}))
@@ -488,6 +498,17 @@ export default function AppointmentForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-slate-50/60">
+        {/* Honeypot anti-bot field: invisible to humans, bots fill it in. */}
+        <input
+          type="text"
+          name="website"
+          value={honeypot}
+          onChange={e => setHoneypot(e.target.value)}
+          autoComplete="off"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="absolute -left-[9999px] top-auto w-px h-px opacity-0"
+        />
         <StepCard step="1" title="Patient Information" done={stepsDone[0]}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -800,9 +821,19 @@ export default function AppointmentForm() {
           {TURNSTILE_ENABLED && (
             <div className="mb-3">
               <TurnstileWidget
-                onToken={setTurnstileToken}
+                onToken={t => {
+                  setTurnstileToken(t)
+                  setTurnstileUnavailable(false)
+                }}
                 onExpire={() => setTurnstileToken('')}
+                onUnavailable={() => setTurnstileUnavailable(true)}
               />
+              {turnstileUnavailable && !turnstileToken && (
+                <p className="mt-2 text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Verification service unreachable on your connection — you can
+                  still submit; extra checks apply.
+                </p>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">

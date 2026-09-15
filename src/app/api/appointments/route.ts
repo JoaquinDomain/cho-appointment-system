@@ -35,16 +35,44 @@ export async function POST(req: Request) {
   // Cloudflare Turnstile bot check — enforced only when configured so local
   // dev without keys keeps working.
   if (process.env.TURNSTILE_SECRET_KEY) {
-    const token =
-      body && typeof body === 'object'
-        ? String((body as Record<string, unknown>).turnstileToken ?? '')
-        : ''
-    const check = await verifyTurnstile(token, ip)
-    if (!check.ok) {
-      return NextResponse.json(
-        { error: 'Human verification failed. Please refresh and try again.' },
-        { status: 403 }
-      )
+    const b =
+      body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+    const token = String(b.turnstileToken ?? '')
+    if (token) {
+      const check = await verifyTurnstile(token, ip)
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: 'Human verification failed. Please refresh and try again.' },
+          { status: 403 }
+        )
+      }
+    } else if (b.turnstileUnavailable === true) {
+      // Fallback for networks that can't reach Cloudflare's challenge
+      // servers (observed on PH mobile data): layered bot signals instead —
+      // honeypot must be empty, form must have been open a human-plausible
+      // amount of time, plus a strict per-IP quota.
+      // NOTE: checkRateLimit is in-memory per instance (best-effort on
+      // serverless); the honeypot + fill-time checks always apply.
+      const trap = String(b.website ?? '')
+      const startedAt = Number(b.formStartedAt ?? 0)
+      const fillMs = Date.now() - startedAt
+      const humanTiming =
+        Number.isFinite(fillMs) && fillMs >= 4000 && fillMs < 6 * 60 * 60 * 1000
+      const rlStrict = checkRateLimit(`book-unverified:${ip}`, 3, 60 * 60 * 1000)
+      if (trap !== '' || !humanTiming || !rlStrict.allowed) {
+        return NextResponse.json(
+          { error: 'Human verification failed. Please refresh and try again.' },
+          { status: 403 }
+        )
+      }
+    } else {
+      const check = await verifyTurnstile(token, ip)
+      if (!check.ok) {
+        return NextResponse.json(
+          { error: 'Human verification failed. Please refresh and try again.' },
+          { status: 403 }
+        )
+      }
     }
   }
 
