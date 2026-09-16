@@ -1,7 +1,7 @@
 import { HEALTH_FACILITIES, LABORATORY_TESTS, APPOINTMENT_STATUSES, ECG_LABEL, ECG_WEEKDAY, type AppointmentStatus } from './types'
-import { unavailableDateReason } from './holidays'
+import { unavailableDateReason } from './dates/holidays'
 
-export { unavailableDateReason } from './holidays'
+export { unavailableDateReason } from './dates/holidays'
 
 const MAX_TESTS = LABORATORY_TESTS.length
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/

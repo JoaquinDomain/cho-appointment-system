@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { d1Query, d1Run } from '@/lib/d1'
-import { requireAdmin } from '@/lib/session'
+import { d1Query, d1Run } from '@/lib/db/d1'
+import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { TEST_CONFIG, onlineLimitForTest } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
-import { toSafeDetail } from '@/lib/safe-detail'
+import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
-import { verifyTurnstile } from '@/lib/turnstile'
+import { verifyTurnstile } from '@/lib/security/turnstile'
 
 // POST /api/appointments — public booking: validated + quota-checked +
 // rate-limited. The server generates the UUID (client `id`, if any, ignored).

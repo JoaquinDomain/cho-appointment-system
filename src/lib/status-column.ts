@@ -4,7 +4,7 @@
 // "no such column: status" or "table appointments has no column named status".
 // Since the app already writes to D1, it can apply the same ALTER TABLE that
 // d1/migrate_status.sql contains, then the caller retries its query.
-import { d1Query, d1Run } from './d1'
+import { d1Query, d1Run } from './db/d1'
 
 export function isMissingStatusColumn(msg: string): boolean {
   return /no\s+(such\s+column|column named)\s*:?\s*status/i.test(msg)

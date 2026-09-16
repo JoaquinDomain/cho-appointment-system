@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { d1Query, d1Run } from '@/lib/d1'
-import { requireAdmin } from '@/lib/session'
+import { d1Query, d1Run } from '@/lib/db/d1'
+import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { TEST_CONFIG, onlineLimitFor, isOnlineOnly } from '@/lib/types'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
-import { toSafeDetail } from '@/lib/safe-detail'
+import { toSafeDetail } from '@/lib/utils/safe-detail'
 
 // POST /api/admin/walkins — admin-only walk-in registration (patient is
 // physically present). No Turnstile: the staff session is the human proof.

@@ -2,7 +2,7 @@
 // Same pattern as status-column.ts / source-column.ts: the app can apply
 // the same ALTER TABLE that d1/migrate_contact.sql contains, then the
 // caller retries its query.
-import { d1Query, d1Run } from './d1'
+import { d1Query, d1Run } from './db/d1'
 
 export function isMissingContactColumn(msg: string): boolean {
   return /no\s+(such\s+column|column named)\s*:?\s*contact_number/i.test(msg)

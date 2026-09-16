@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { d1First } from '@/lib/d1'
-import { verifyPassword, verifyAgainstDummy } from '@/lib/password'
-import { createSession, sessionCookieHeader } from '@/lib/session'
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { d1First } from '@/lib/db/d1'
+import { verifyPassword, verifyAgainstDummy } from '@/lib/auth/password'
+import { createSession, sessionCookieHeader } from '@/lib/auth/session'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 // POST /api/admin/login — { email, password } → sets httpOnly session cookie.
 // Generic error messages to avoid user enumeration; dummy verify on miss.

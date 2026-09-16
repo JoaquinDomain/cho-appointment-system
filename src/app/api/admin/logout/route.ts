@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { destroySession, clearSessionCookieHeader } from '@/lib/session'
+import { destroySession, clearSessionCookieHeader } from '@/lib/auth/session'
 
 // POST /api/admin/logout — destroys the session, clears the cookie.
 export async function POST(req: Request) {

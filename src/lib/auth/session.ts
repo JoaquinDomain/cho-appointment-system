@@ -1,7 +1,7 @@
 // Server-only opaque admin sessions stored in D1.
 // Cookie holds the raw token; D1 holds only its SHA-256 hash.
 import { createHash, randomBytes } from 'node:crypto'
-import { d1First, d1Run } from './d1'
+import { d1First, d1Run } from '../db/d1'
 
 export const SESSION_COOKIE = 'cho_admin_session'
 export const SESSION_MAX_AGE_SEC = 7 * 24 * 60 * 60 // 7 days

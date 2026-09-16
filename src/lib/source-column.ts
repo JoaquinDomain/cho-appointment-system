@@ -2,7 +2,7 @@
 // Those tables lack the `source` column — same pattern as status-column.ts:
 // the app can apply the same ALTER TABLE that d1/migrate_source.sql
 // contains, then the caller retries its query.
-import { d1Query, d1Run } from './d1'
+import { d1Query, d1Run } from './db/d1'
 
 export function isMissingSourceColumn(msg: string): boolean {
   return /no\s+(such\s+column|column named)\s*:?\s*source/i.test(msg)

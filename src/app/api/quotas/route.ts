@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { d1Query } from '@/lib/d1'
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { d1Query } from '@/lib/db/d1'
+import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'

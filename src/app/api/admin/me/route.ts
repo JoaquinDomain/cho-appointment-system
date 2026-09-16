@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSessionEmail } from '@/lib/session'
+import { getSessionEmail } from '@/lib/auth/session'
 
 // GET /api/admin/me — returns the logged-in admin email, or 401.
 export async function GET(req: Request) {

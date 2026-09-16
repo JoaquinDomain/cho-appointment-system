@@ -85,4 +85,4 @@ export const FASTING_REQUIRED_TESTS = Object.values(TEST_CONFIG)
   .filter(t => t.requiresFasting)
   .map(t => t.label)
 
-export { unavailableDateReason, holidayName, isWeekend } from './holidays'
+export { unavailableDateReason, holidayName, isWeekend } from './dates/holidays'

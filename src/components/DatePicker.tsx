@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
-import { holidayName, isWeekend } from '@/lib/holidays'
+import { holidayName, isWeekend } from '@/lib/dates/holidays'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
