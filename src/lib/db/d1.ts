@@ -1,6 +1,5 @@
-// Server-only Cloudflare D1 client over the HTTP API (app runs on Vercel,
-// so there is no Workers binding — all queries go through api.cloudflare.com).
-// Never import from a 'use client' component.
+// D1 client for server use only. Do not import in client components.
+// App is on Vercel so no worker binding, we just call the Cloudflare API.
 
 interface D1Envelope {
   success: boolean
@@ -54,7 +53,7 @@ export async function d1First<T = Record<string, unknown>>(
   return rows[0] ?? null
 }
 
-// For INSERT/UPDATE/DELETE. Returns number of changed rows.
+// insert/update/delete, returns affected rows
 export async function d1Run(sql: string, params: unknown[] = []): Promise<number> {
   const { accountId, databaseId, apiToken } = getConfig()
   const res = await fetch(

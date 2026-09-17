@@ -11,10 +11,9 @@ import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-colum
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { toSafeDetail } from '@/lib/utils/safe-detail'
 
-// POST /api/admin/walkins — admin-only walk-in registration (patient is
-// physically present). No Turnstile: the staff session is the human proof.
-// Quota rule differs from online booking: walk-ins may use the held-back
-// half, so the check is against TOTAL daily capacity per test.
+// POST /api/admin/walkins, admin only. Patient is here in person.
+// No turnstile, login is enough. Walkin uses the reserved half,
+// so check is against total limit per test.
 export async function POST(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
 
-  // Online-only tests (ECG) can never be walk-ins — no walk-in quota exists.
+  // ECG cannot be walkin, online only
   const onlineOnly = parsed.data.selected_tests.filter(isOnlineOnly)
   if (onlineOnly.length > 0) {
     return NextResponse.json(
@@ -84,9 +83,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
-  // Walk-ins draw from the held-back half: each test's walk-in bookings
-  // must stay under (total limit − online limit), and total bookings under
-  // the full daily limit.
+  // walkin must fit in reserved half and in total limit
   const split = countBookedTestsBySource(existing)
   const testConfigs = Object.values(TEST_CONFIG)
   const overLimit: string[] = []
@@ -135,7 +132,7 @@ export async function POST(req: Request) {
   try {
     await insertMain()
   } catch (e) {
-    // Self-heal for the contact_number column, then retry the full insert.
+    // if contact column missing, add then try again
     if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
       const healed = await ensureContactColumn()
       if (healed.ok) {

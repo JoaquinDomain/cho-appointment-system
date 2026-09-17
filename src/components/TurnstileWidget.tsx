@@ -46,7 +46,7 @@ function loadScript(retries = 3): Promise<void> {
       s.onerror = () => {
         s.remove()
         if (attempt < retries) {
-          // Mobile networks often fail first load — back off and retry.
+          // first load often fails on mobile data, wait then try again
           setTimeout(tryInsert, attempt * 1500)
         } else {
           reject(new Error('script-error'))
@@ -65,8 +65,7 @@ export default function TurnstileWidget({
 }: {
   onToken: (token: string) => void
   onExpire: () => void
-  /** Called when the challenge service is unreachable (not just expired) —
-   * the form can then offer a guarded fallback submit path. */
+  /** Called when cloudflare cannot be reached, form can use fallback. */
   onUnavailable: () => void
 }) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
@@ -83,8 +82,7 @@ export default function TurnstileWidget({
     failures.current += 1
     setFailed(true)
     cbRef.current.onExpire()
-    // Two consecutive failures (even across a manual retry) means the
-    // device/network can't reach Cloudflare — stop blocking on it.
+    // 2 fails means phone/net cannot reach cloudflare, use fallback
     if (failures.current >= 2) cbRef.current.onUnavailable()
   }, [])
 
@@ -95,18 +93,17 @@ export default function TurnstileWidget({
         try {
           window.turnstile.remove(widgetId.current)
         } catch {
-          // stale id — fall through and re-render
+          // old id, just render again
         }
         widgetId.current = null
       }
       widgetId.current = window.turnstile.render(mountRef.current, {
         sitekey: siteKey,
         theme: 'auto',
-        // Flexible width collapses to narrow phone screens instead of
-        // overflowing a fixed 300px frame (common mobile breakage).
+        // flexible so it fits small phone screens
         size: 'flexible',
         language: 'auto',
-        // Let Cloudflare auto-retry the challenge handshake on flaky mobile data.
+        // auto retry for unstable mobile data
         retry: 'auto',
         'retry-interval': 2000,
         'refresh-expired': 'auto',
@@ -120,9 +117,7 @@ export default function TurnstileWidget({
           cbRef.current.onExpire()
         },
         'error-callback': () => {
-          // Widget iframe loaded but couldn't reach Cloudflare
-          // (offline blip, in-app browser, adblock/DNS filter,
-          // carrier-level block). NOT a normal expiry.
+          // widget loaded but no connection to cloudflare. not just expired.
           noteFailure()
         },
         'timeout-callback': () => {
@@ -144,8 +139,7 @@ export default function TurnstileWidget({
     loadScript(3)
       .then(() => {
         if (!cancelled) {
-          // Small delay: on mobile WebViews the DOM/iframe isn't always
-          // ready the instant api.js fires onload.
+          // small wait, api.js onload fires early on some webviews
           setTimeout(() => {
             if (!cancelled && !renderWidget()) noteFailure()
           }, 300)

@@ -1,5 +1,5 @@
-// Server-only opaque admin sessions stored in D1.
-// Cookie holds the raw token; D1 holds only its SHA-256 hash.
+// Admin login session saved in D1.
+// Cookie has the token, D1 only keeps the hash.
 import { createHash, randomBytes } from 'node:crypto'
 import { d1First, d1Run } from '../db/d1'
 
@@ -40,7 +40,7 @@ export function getSessionToken(req: Request): string | null {
   return null
 }
 
-// Returns the session email, or null. Sliding-refreshes expiry when close to expiring.
+// Check session and extend expiry if almost expired.
 export async function getSessionEmail(req: Request): Promise<string | null> {
   const token = getSessionToken(req)
   if (!token) return null

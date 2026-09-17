@@ -1,13 +1,8 @@
-// Philippine non-working holidays (lab closed — no appointments).
-// Single source of truth for client + server closed-day checks.
-//
-// 2026 dates per the Malacañang holiday proclamation (regular holidays and
-// special non-working days). 25 Feb 2026 (EDSA Anniversary) is a special
-// WORKING day, so it is intentionally NOT listed — the lab is open.
-// Eid'l Fitr / Eid'l Adha dates are proclaimed separately by the NCMF after
-// moon-sighting and are not listed here until announced.
-// 2027 lists only fixed-date / Holy-Week-derived days (Easter 2027 = Mar 28);
-// the full 2027 proclamation is still pending at the time of writing.
+// PH holidays, lab is closed. Used by both frontend and backend.
+// 2026 dates based on Malacanang proclamation.
+// Feb 25 2026 is working so not included.
+// Eid dates not listed yet, waiting for NCMF announcement.
+// 2027 list is partial only (Easter Mar 28), full list not out yet.
 
 export const PHILIPPINE_HOLIDAYS: Readonly<Record<string, string>> = {
   // ---- 2026: regular holidays ----
@@ -59,7 +54,7 @@ export function isWeekend(dateStr: string): boolean {
   return day === 0 || day === 6
 }
 
-// Returns a human-readable reason, or null if the date is bookable.
+// Check if date is closed, returns reason or null if open.
 export function unavailableDateReason(dateStr: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
   if (isWeekend(dateStr))

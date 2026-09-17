@@ -51,20 +51,18 @@ export const TEST_CONFIG = {
   ecg: { label: 'ECG', limit: 15, requiresFasting: false },
 } as const
 
-// ECG runs Wednesday afternoons only (1:00–4:00 PM) — enforced in validation.
+// ECG is Wednesday afternoon only (1-4 PM), checked in validation.
 export const ECG_LABEL = TEST_CONFIG.ecg.label
 export const ECG_WEEKDAY = 3 // 0 = Sunday … 6 = Saturday; 3 = Wednesday
 
-// Tests that are online-booking only: no walk-in quota is held back, the
-// full daily limit is bookable online, and the walk-in route rejects them.
+// Online only tests: full limit is for online, walkin route will reject these.
 export const ONLINE_ONLY_LABELS: readonly string[] = [TEST_CONFIG.ecg.label]
 
 export function isOnlineOnly(label: string): boolean {
   return ONLINE_ONLY_LABELS.includes(label)
 }
 
-// Online-bookable share of a test's daily capacity: half, except
-// online-only tests where the full limit is bookable online.
+// Online share is half of daily limit, except online-only which is full.
 export function onlineLimitForTest(totalLimit: number, label: string): number {
   if (isOnlineOnly(label)) return totalLimit
   return onlineLimitFor(totalLimit)
@@ -72,9 +70,8 @@ export function onlineLimitForTest(totalLimit: number, label: string): number {
 
 export type TestKey = keyof typeof TEST_CONFIG
 
-// Half of each test's daily capacity is reserved for walk-ins; the other
-// half is bookable online. Online limit rounds up so tiny quotas
-// (e.g. OGTT limit 1) still allow at least 1 online booking.
+// Half is for online, half is reserved for walkin. Round up so
+// small limits like OGTT (1) still get 1 online slot.
 export function onlineLimitFor(totalLimit: number): number {
   return Math.max(1, Math.ceil(totalLimit / 2))
 }

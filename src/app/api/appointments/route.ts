@@ -13,8 +13,8 @@ import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-colum
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { verifyTurnstile } from '@/lib/security/turnstile'
 
-// POST /api/appointments — public booking: validated + quota-checked +
-// rate-limited. The server generates the UUID (client `id`, if any, ignored).
+// POST /api/appointments, public booking. With validation, quota and rate limit.
+// Server makes the id, ignore any id from client.
 export async function POST(req: Request) {
   const ip = getClientIp(req)
   const rl = checkRateLimit(`book:${ip}`, 10, 10 * 60 * 1000)
@@ -32,8 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
-  // Cloudflare Turnstile bot check — enforced only when configured so local
-  // dev without keys keeps working.
+  // turnstile check, only if keys are set so local dev still works
   if (process.env.TURNSTILE_SECRET_KEY) {
     const b =
       body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
@@ -47,12 +46,9 @@ export async function POST(req: Request) {
         )
       }
     } else if (b.turnstileUnavailable === true) {
-      // Fallback for networks that can't reach Cloudflare's challenge
-      // servers (observed on PH mobile data): layered bot signals instead —
-      // honeypot must be empty, form must have been open a human-plausible
-      // amount of time, plus a strict per-IP quota.
-      // NOTE: checkRateLimit is in-memory per instance (best-effort on
-      // serverless); the honeypot + fill-time checks always apply.
+      // fallback for phones that cannot load cloudflare (seen on PH mobile data)
+      // check honeypot, how long the form was open, plus strict limit per IP
+      // note: rate limit is per server only, but honeypot and fill time always run
       const trap = String(b.website ?? '')
       const startedAt = Number(b.formStartedAt ?? 0)
       const fillMs = Date.now() - startedAt
@@ -83,9 +79,9 @@ export async function POST(req: Request) {
 
   let existing: QuotaRow[]
   try {
-    // Status+source-aware read: cancelled frees slots, online counts exclude
-    // walk-ins so the held-back half is never eaten by web bookings.
-    // Pre-migration databases lack the columns — self-heal, then legacy read.
+    // read by date. cancelled frees the slot, walkins are separate
+    // so online booking does not eat the walkin half.
+    // old db may not have the new columns, fix then use old query.
     try {
       existing = await d1Query<QuotaRow>(
         'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
@@ -131,16 +127,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
-  // Same counting rules as the public quotas API (see lib/quota-count).
-  // Online share only — walk-ins don't consume web slots anymore.
+  // same counting as quotas api, online only
   const counts = countBookedTestsBySource(existing).online
 
   const testConfigs = Object.values(TEST_CONFIG)
   const overLimit: string[] = []
   for (const label of parsed.data.selected_tests) {
     const config = testConfigs.find((t) => t.label === label)
-    // Online-only tests (ECG) use the full daily limit — nothing is held
-    // back for walk-ins. All other tests use the online half.
+    // ECG uses full limit, others use online half
     const onlineLimit = config ? onlineLimitForTest(config.limit, label) : 0
     if (config && (counts[label] || 0) >= onlineLimit) {
       overLimit.push(`${label} (Online limit: ${onlineLimit}, Booked: ${counts[label]})`)
@@ -179,7 +173,7 @@ export async function POST(req: Request) {
   try {
     await insertMain()
   } catch (e) {
-    // Self-heal for the contact_number column, then retry the full insert.
+    // if contact_number column is missing, add it then try again
     if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
       const healed = await ensureContactColumn()
       if (healed.ok) {
@@ -192,13 +186,10 @@ export async function POST(req: Request) {
       }
     }
     const msg = e instanceof Error ? e.message : ''
-    // Databases created before the status/source migrations lack those
-    // columns (CREATE TABLE IF NOT EXISTS never backfills them).
-    // Retry the legacy shape so booking still succeeds, and log the
-    // one-line remediation for the operator.
+    // old db has no status/source yet, use old insert so booking still works
     if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       console.warn(
-        'appointments.status/source/contact column missing — booking with legacy schema. ' +
+        'appointments.status/source/contact column missing - booking with legacy schema. ' +
           'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql, ./d1/migrate_source.sql and ./d1/migrate_contact.sql'
       )
       try {
@@ -251,8 +242,7 @@ export async function POST(req: Request) {
           { status: 500 }
         )
       }
-      // Unknown write failure: surface the sanitized database message so the
-      // UI shows the real cause instead of a blind generic error.
+      // show real db error (cleaned) instead of generic fail
       return NextResponse.json(
         { error: 'Failed to create appointment.', details: toSafeDetail(msg) },
         { status: 500 }
@@ -263,8 +253,8 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true, id }, { status: 201 })
 }
 
-// GET /api/appointments — admin-only, server-side search/filter/pagination.
-// Query: ?page=1&limit=25&search=&facility=&date=YYYY-MM-DD&from=YYYY-MM-DD&to=YYYY-MM-DD&status=pending&yakap=true
+// GET /api/appointments, admin only with search/filter/pages
+// ?page=1&limit=25&search=&facility=&date=&from=&to=&status=&yakap=true
 export async function GET(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -292,8 +282,7 @@ export async function GET(req: Request) {
   const clauses: string[] = []
   const params: unknown[] = []
   if (search) {
-    // Match patient name (partial) or exact appointment ID (lets staff paste
-    // the ID from the patient's confirmation screen).
+    // match name or exact id (for pasting id from confirmation)
     clauses.push(`(patient_name LIKE ? ESCAPE '\\' OR id = ?)`)
     params.push(`%${escapeLike(search)}%`, search)
   }
@@ -340,8 +329,7 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
-    // A `status` filter on a pre-migration database fails on the missing
-    // column — self-heal, then retry once.
+    // old db has no status column, add then try once
     if (isMissingStatusColumn(msg)) {
       const healed = await ensureStatusColumn()
       if (healed.ok) {

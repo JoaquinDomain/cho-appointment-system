@@ -38,7 +38,7 @@ export function validateAppointmentInput(body: unknown):
 
   // patient_name: trim, 2–100 chars
   const rawName = typeof b.patient_name === 'string' ? b.patient_name.trim().replace(/\s+/g, ' ') : ''
-  // Also accept legacy fullName key from older clients
+  // fullName is old key, still accept it
   const altName =
     typeof (b as Record<string, unknown>).fullName === 'string'
       ? String((b as Record<string, unknown>).fullName).trim().replace(/\s+/g, ' ')
@@ -48,14 +48,14 @@ export function validateAppointmentInput(body: unknown):
     errors.push('Full name must be 2–100 characters.')
   }
 
-  // age: int 1–120 (accept string or number)
+  // age can be string or number
   const ageNum =
     typeof b.age === 'number' ? b.age : typeof b.age === 'string' ? Number(b.age) : NaN
   if (!Number.isInteger(ageNum) || ageNum < 1 || ageNum > 120) {
     errors.push('Age must be a whole number between 1 and 120.')
   }
 
-  // contact_number: required, 7–15 digits (allows +, spaces, dashes, parens)
+  // contact number, 7-15 digits only
   const rawContact =
     typeof b.contact_number === 'string'
       ? b.contact_number.trim()
@@ -73,7 +73,7 @@ export function validateAppointmentInput(body: unknown):
     errors.push('Contact number must be 7–15 digits.')
   }
 
-  // consultation_facility: must be in allowlist (accept legacy healthFacility key)
+  // facility must be in list (healthFacility is old key)
   const rawFacility =
     typeof b.consultation_facility === 'string'
       ? b.consultation_facility.trim()
@@ -84,7 +84,7 @@ export function validateAppointmentInput(body: unknown):
     errors.push('Selected health facility is invalid.')
   }
 
-  // yakap_registered: boolean (accept 'YES'/'NO' legacy strings)
+  // yakap yes/no, old form sends YES/NO string
   let yakap_registered: boolean | null = null
   if (typeof b.yakap_registered === 'boolean') yakap_registered = b.yakap_registered
   else if (typeof (b as Record<string, unknown>).yakapRegistered === 'boolean')
@@ -93,7 +93,7 @@ export function validateAppointmentInput(body: unknown):
   else if (b.yakap_registered === 'NO') yakap_registered = false
   if (yakap_registered === null) errors.push('YAKAP registration status is required.')
 
-  // yakap_facility: required iff registered, must be in allowlist; else null
+  // yakap facility required if YES
   const rawYakap =
     typeof b.yakap_facility === 'string'
       ? b.yakap_facility.trim()
@@ -106,7 +106,7 @@ export function validateAppointmentInput(body: unknown):
     else yakap_facility = rawYakap
   }
 
-  // selected_tests: 1 to N items (N = number of configured tests), each in allowlist, deduped
+  // at least 1 test, remove duplicates
   const rawTests = Array.isArray(b.selected_tests)
     ? b.selected_tests
     : Array.isArray((b as Record<string, unknown>).selectedTests)
@@ -124,7 +124,7 @@ export function validateAppointmentInput(body: unknown):
     selected_tests = cleaned.filter((t) => TESTS.has(t))
   }
 
-  // appointment_date: YYYY-MM-DD, today..today+180 (local-day comparison avoids UTC off-by-one)
+  // date must be today to +180 days, compare local date so no UTC issue
   const rawDate =
     typeof b.appointment_date === 'string'
       ? b.appointment_date.trim()

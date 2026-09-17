@@ -5,8 +5,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { Download, Printer } from 'lucide-react'
 import { isAdminSite } from '@/lib/appMode'
 
-// Production patient booking site — admin QR must point here even when
-// NEXT_PUBLIC_PATIENT_SITE_URL is not configured on the admin deployment.
+// patient site in production. admin QR should go here even if env is missing.
 const DEFAULT_PATIENT_SITE_URL = 'https://cho-appointment-system.vercel.app/'
 
 export default function SiteQRPoster() {
@@ -16,10 +15,9 @@ export default function SiteQRPoster() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOriginUrl(window.location.origin)
   }, [])
-  // On the admin site the poster must point patients to the public booking site.
-  // Never fall back to the admin origin — that links to the staff login instead
-  // of the booking form. Env wins, then the production patient URL, then origin
-  // (only useful for local patient-site dev).
+  // on admin site, point to public booking site.
+  // do not use admin link, patients need the booking form.
+  // order: env first, then prod link, then current origin for local test.
   const siteUrl =
     process.env.NEXT_PUBLIC_PATIENT_SITE_URL ||
     (isAdminSite ? DEFAULT_PATIENT_SITE_URL : originUrl || DEFAULT_PATIENT_SITE_URL)

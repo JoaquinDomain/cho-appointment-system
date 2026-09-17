@@ -1,6 +1,5 @@
-// Shared sanitizer for database errors shown in API responses.
-// Strips credential-like material and caps length. D1 error text contains no
-// secrets, but this keeps UI output safe by construction.
+// Clean up db error before sending to frontend.
+// Hide tokens and limit length.
 export function toSafeDetail(msg: string): string {
   const cleaned = msg
     .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')

@@ -62,8 +62,7 @@ export default function AdminDashboard() {
   const [quotaError, setQuotaError] = useState('')
   const [showWalkin, setShowWalkin] = useState(false)
 
-  // Server-side paginated + filtered list via admin-only API.
-  // No direct database read from the browser; session cookie authenticates.
+  // list from server, admin api only. Session cookie is used.
   const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string, date: string, status: string, yakap: boolean) => {
     setLoading(true)
     setError('')
@@ -87,7 +86,7 @@ export default function AdminDashboard() {
       const listJson = await listRes.json()
       setAppointments(listJson.data ?? [])
       setTotal(listJson.total ?? 0)
-      // Stats from server-side counts (accurate with pagination)
+      // counts from server so paging is correct
       const tJson = todayRes.ok ? await todayRes.json().catch(() => null) : null
       const yJson = yakapRes.ok ? await yakapRes.json().catch(() => null) : null
       setStats({
@@ -115,8 +114,7 @@ export default function AdminDashboard() {
     void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly)
   }, [fetchAppointments, page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly])
 
-  // Stat cards double as filters: total clears, today filters to today,
-  // YAKAP shows only YAKAP members.
+  // stat cards are also filters. total clears, today shows today, yakap shows members.
   const showAll = () => {
     setPage(1)
     setSearchTerm('')
@@ -151,7 +149,7 @@ export default function AdminDashboard() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        // Keep the last good counts — never present a failed load as zeros.
+        // keep old numbers, do not show failed load as zero
         throw new Error((json as { error?: string }).error ?? 'Failed to fetch quota data')
       }
       setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
@@ -169,20 +167,20 @@ export default function AdminDashboard() {
     if (showQuotas) void fetchQuotas(quotaDate)
   }, [showQuotas, quotaDate, fetchQuotas])
 
-  // Server returns already-filtered page; keep name for minimal template diff.
+  // server already filters, just keep name so template stays same
   const filteredAppointments = appointments
 
   const handleScanResult = async (result: string) => {
     setShowScanner(false)
     setScanError('')
     const id = result.trim()
-    // 1) hit current page first for instant feedback
+    // check current page first so it opens fast
     const local = appointments.find(apt => apt.id === id)
     if (local) {
       openDetails(local)
       return
     }
-    // 2) admin-only server lookup (validates UUID + session server-side)
+    // 2) if not here, look up in server (checks id and login)
     try {
       const res = await fetch(`/api/appointments/${encodeURIComponent(id)}`, {
         credentials: 'same-origin',
@@ -576,10 +574,10 @@ export default function AdminDashboard() {
             {quotaError && <p className="text-sm text-red-700 mb-2">{quotaError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
-                // Online counts exclude walk-ins; totals include everything.
+                // online count excludes walkin, total includes all
                 const booked = quotaTotals[t.label] ?? quotaCounts[t.label] ?? 0
                 const walkins = quotaWalkins[t.label] ?? 0
-                // Total capacity vs online share (half held for walk-ins).
+                // total limit vs online share (half is for walkin)
                 const onlineLimit = onlineLimitFor(t.limit)
                 const onlineBooked = quotaCounts[t.label] ?? Math.max(0, booked - walkins)
                 const onlineAvailable = Math.max(0, onlineLimit - onlineBooked)

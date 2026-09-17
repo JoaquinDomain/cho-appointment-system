@@ -1,7 +1,4 @@
-// Self-heal for databases created before contact-number tracking.
-// Same pattern as status-column.ts / source-column.ts: the app can apply
-// the same ALTER TABLE that d1/migrate_contact.sql contains, then the
-// caller retries its query.
+// Old db has no contact_number yet. Same fix, see migrate_contact.sql.
 import { d1Query, d1Run } from './db/d1'
 
 export function isMissingContactColumn(msg: string): boolean {
@@ -22,7 +19,7 @@ export async function ensureContactColumn(): Promise<
   }
 
   console.warn(
-    'appointments.contact_number column missing — auto-applying migration. ' +
+    'appointments.contact_number column missing - auto-applying migration. ' +
       'Equivalent manual step: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_contact.sql'
   )
   try {

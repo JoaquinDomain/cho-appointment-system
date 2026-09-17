@@ -253,18 +253,17 @@ export default function AppointmentForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Custom calendar has no native `required` — guard here instead.
+    // calendar has no required, check here
     if (!formData.appointmentDate) {
       setSubmitError('Please choose your preferred appointment date.')
       return
     }
-    // Lab closed weekends + PH holidays — stop here so the user picks another day.
+    // closed day, ask user to pick another
     if (closedDayReason) {
       setSubmitError(`${closedDayReason} Please choose another day.`)
       return
     }
-    // Client-side guard: never let a fully-booked-online test submit for
-    // this date — force picking another day before hitting the server.
+    // block submit if online slots are full for this date
     if (quotasLoaded && formData.appointmentDate) {
       const full = formData.selectedTests.filter(label => {
         const cfg = Object.values(TEST_CONFIG).find(t => t.label === label)
@@ -287,8 +286,7 @@ export default function AppointmentForm() {
     }
 
     try {
-      // Secure path: validated + quota-checked + rate-limited server API
-      // generates the UUID. No direct database write, no client-made ID.
+      // booking api makes the id, no direct db write from here
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,15 +318,14 @@ export default function AppointmentForm() {
             ? rawDetails
             : ''
         const base = (json as { error?: string }).error ?? 'Submit failed'
-        // Avoid "appointment.: detail" — use a space when base ends with '.'.
+        // join error and details cleanly
         const sep = details ? (base.endsWith('.') ? ' ' : ': ') : ''
         throw new Error(`${base}${sep}${details}`)
       }
-      // Server-generated UUID (never trust a client-made ID).
+      // id comes from server
       setQrCodeId((json as { id: string }).id)
-      // Optimistically decrement availability for every booked test so the
-      // UI reflects the new booking immediately.
-      // The quota effect refetches from the server when returning to the form.
+      // update count right away so UI is correct
+      // quota will refetch from server when back to form
       setTestCounts(prev => {
         const next = { ...prev }
         for (const t of formData.selectedTests) {
@@ -367,7 +364,7 @@ export default function AppointmentForm() {
     d.setDate(d.getDate() + 180)
     return d.toISOString().split('T')[0]
   }, [])
-  // Lab is closed weekends + PH holidays — block picking/submitting those days.
+  // closed days cannot be picked
   const closedDayReason = formData.appointmentDate ? unavailableDateReason(formData.appointmentDate) : null
 
   const stepsDone = [
@@ -382,7 +379,7 @@ export default function AppointmentForm() {
     c.label.toLowerCase().includes(testSearch.trim().toLowerCase())
   )
 
-  // ECG runs Wednesday afternoons only — warn before submit (server enforces too).
+  // ECG is Wednesday only, warn early (server also checks)
   const ecgSelected = formData.selectedTests.includes(ECG_LABEL)
   const ecgDayMismatch =
     ecgSelected &&
@@ -715,11 +712,9 @@ export default function AppointmentForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filteredTests.map(config => {
                 const test = config.label
-                // Online-bookable share only (full limit for online-only tests like
-                // ECG); remainder is held for walk-ins.
+                // online share only, rest is for walkin
                 const limit = onlineLimitForTest(config.limit, config.label)
-                // Only trust counts actually loaded for the selected date —
-                // never display a "0 booked" that is just missing data.
+                // use loaded counts only, do not show 0 if not loaded yet
                 const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
                 const availableCount = Math.max(0, limit - bookedCount)
                 const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded

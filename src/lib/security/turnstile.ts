@@ -1,5 +1,4 @@
-// Server-only Cloudflare Turnstile verification for public booking.
-// Never import from a 'use client' component.
+// Turnstile check for public booking. Server only, do not use in client.
 interface VerifyResponse {
   success: boolean
   'error-codes'?: string[]
@@ -17,7 +16,7 @@ export async function verifyTurnstile(
   remoteIp?: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) return { ok: true } // not configured (local dev) — fail open
+  if (!secret) return { ok: true } // no keys in local dev, just skip
   if (!token || token.length < 10 || token.length > 4096) {
     return { ok: false, reason: 'missing-token' }
   }

@@ -1,5 +1,5 @@
-// Server-only password hashing with node:crypto scrypt (no new dependencies).
-// Format: scrypt$v=1$n=16384$r=8$p=1$<salt-b64>$<hash-b64>
+// Password hash using node scrypt, no extra package needed.
+// Saved format: scrypt$v=1$n=16384$r=8$p=1$<salt>$<hash>
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 
 const PREFIX = 'scrypt$v=1$n=16384$r=8$p=1$'
@@ -26,7 +26,7 @@ export function verifyPassword(password: string, stored: string): boolean {
   }
 }
 
-// Dummy hash so login timing doesn't reveal whether an email exists.
+// Fake hash so login time is same even if email does not exist.
 const DUMMY_HASH = `${PREFIX}AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`
 
 export function verifyAgainstDummy(password: string): void {

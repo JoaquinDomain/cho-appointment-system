@@ -1,7 +1,4 @@
-// Self-heal for databases created before walk-in tracking.
-// Those tables lack the `source` column — same pattern as status-column.ts:
-// the app can apply the same ALTER TABLE that d1/migrate_source.sql
-// contains, then the caller retries its query.
+// Old db has no source column yet. Same fix as status, see migrate_source.sql.
 import { d1Query, d1Run } from './db/d1'
 
 export function isMissingSourceColumn(msg: string): boolean {
@@ -22,7 +19,7 @@ export async function ensureSourceColumn(): Promise<
   }
 
   console.warn(
-    'appointments.source column missing — auto-applying migration. ' +
+    'appointments.source column missing - auto-applying migration. ' +
       'Equivalent manual step: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_source.sql'
   )
   try {

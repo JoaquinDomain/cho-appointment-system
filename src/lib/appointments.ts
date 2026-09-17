@@ -1,7 +1,7 @@
 import type { Appointment, AppointmentStatus } from './types'
 import { APPOINTMENT_STATUSES } from './types'
 
-// D1 stores yakap_registered as INTEGER 0/1 and selected_tests as JSON text.
+// D1 saves yakap as 0/1 and tests as JSON string.
 export interface AppointmentRow {
   id: string
   patient_name: string
@@ -41,7 +41,7 @@ export function mapAppointmentRow(row: AppointmentRow): Appointment {
   }
 }
 
-// LIKE pattern escaping for SQLite (used with ESCAPE '\').
+// for LIKE search in sqlite
 export function escapeLike(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
 }

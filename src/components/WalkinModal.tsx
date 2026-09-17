@@ -35,7 +35,7 @@ export default function WalkinModal({
   const [error, setError] = useState('')
   const [createdId, setCreatedId] = useState('')
 
-  // Lab is closed weekends + PH holidays — same rule as online booking.
+  // same closed-day rule as online booking
   const closedDayReason = date ? unavailableDateReason(date) : null
 
   const toggleTest = (label: string) => {

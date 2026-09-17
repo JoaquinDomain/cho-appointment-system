@@ -1,6 +1,5 @@
-// Best-effort in-memory sliding-window rate limiter for a single instance.
-// For multi-instance / production-grade limiting, replace with Upstash Redis.
-// Keyed by IP (+ route). Expired buckets are pruned on each hit.
+// Simple in-memory rate limit per server instance.
+// Old entries are cleared on each check.
 
 interface Bucket {
   hits: number[]

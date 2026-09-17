@@ -15,7 +15,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [retryKey, setRetryKey] = useState(0)
   const scannerRef = useRef<HTMLDivElement>(null)
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null)
-  // Stabilize callback so the camera isn't re-initialized on every parent render.
+  // keep callback steady so camera does not restart on each render
   const onScanRef = useRef(onScan)
   useEffect(() => {
     onScanRef.current = onScan
@@ -42,7 +42,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
 
     const startScanner = async () => {
       try {
-        // Dynamically import html5-qrcode to avoid SSR issues
+        // import here so it does not run on server
         const { Html5Qrcode } = await import('html5-qrcode')
         
         if (!mounted || !scannerRef.current) return
@@ -62,7 +62,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             }
           },
           () => {
-            // Ignore scan errors, they're normal during scanning
+            // scan misses are normal, ignore
           }
         )
         

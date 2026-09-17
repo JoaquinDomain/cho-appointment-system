@@ -1,19 +1,17 @@
-// Shared quota counting used by the public quotas API, the booking
-// quota-check, and (indirectly) every UI that displays booked counts.
-// Rules, applied identically everywhere:
-// - Counts are per appointment_date (callers filter by date in SQL).
-// - Cancelled appointments free their slot and are NOT counted.
-// - Rows without a status (pre-migration databases) are counted.
-// - Labels are trimmed so stray whitespace can never split a test's count.
+// Counting for quotas, used by quotas api and booking check.
+// Rules:
+// - per date only (caller filters in SQL)
+// - cancelled is not counted, slot is free again
+// - old rows with no status are counted
+// - trim labels so spaces do not split count
 export interface QuotaRow {
   selected_tests: string
   status?: unknown
   source?: unknown
 }
 
-// Split counts by booking origin. Rows without a source (pre-migration
-// databases, legacy fallback reads) count as online — walk-ins didn't
-// exist before the source column, so this is exact, not a guess.
+// Split online vs walkin. Old rows with no source count as online
+// since walkin did not exist before the source column.
 export function countBookedTestsBySource(rows: QuotaRow[]): {
   online: Record<string, number>
   walkin: Record<string, number>
@@ -30,7 +28,7 @@ export function countBookedTestsBySource(rows: QuotaRow[]): {
     try {
       tests = JSON.parse(row.selected_tests)
     } catch {
-      continue // Ignore malformed rows when counting.
+      continue // skip bad rows
     }
     if (!Array.isArray(tests)) continue
     const bucket =

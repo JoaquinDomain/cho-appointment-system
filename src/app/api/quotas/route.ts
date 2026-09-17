@@ -5,11 +5,10 @@ import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 
-// Quota counts change on every booking — never cache this response.
+// quota changes on every booking, do not cache
 export const dynamic = 'force-dynamic'
 
-// GET /api/quotas?date=YYYY-MM-DD — public aggregate counts per test for a
-// date (no PHI: only test labels + counts).
+// GET /api/quotas?date=YYYY-MM-DD, public. Only test counts, no patient data.
 export async function GET(request: Request) {
   const ip = getClientIp(request)
   const rl = checkRateLimit(`quotas:${ip}`, 60, 60 * 1000)
@@ -26,9 +25,8 @@ export async function GET(request: Request) {
 
   let rows: QuotaRow[]
   try {
-    // Prefer the status+source-aware read so cancelled bookings free their
-    // slot and online/walk-in counts split. Pre-migration databases lack
-    // the columns — self-heal, then fall back to legacy reads.
+    // need status+source so cancelled frees slot and online/walkin split.
+    // old db may lack columns, fix then use old query.
     try {
       rows = await d1Query<QuotaRow>(
         'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
@@ -64,8 +62,7 @@ export async function GET(request: Request) {
 
   const split = countBookedTestsBySource(rows)
   return NextResponse.json(
-    // `counts` stays online-only so existing clients (booking form) keep
-    // correct online availability; walkinCounts/totalCounts are additive.
+    // counts stays online only so booking form still works, others are extra
     { counts: split.online, walkinCounts: split.walkin, totalCounts: split.total },
     { headers: { 'Cache-Control': 'no-store' } }
   )

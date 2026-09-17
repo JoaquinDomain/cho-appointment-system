@@ -4,8 +4,8 @@ import { verifyPassword, verifyAgainstDummy } from '@/lib/auth/password'
 import { createSession, sessionCookieHeader } from '@/lib/auth/session'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
-// POST /api/admin/login — { email, password } → sets httpOnly session cookie.
-// Generic error messages to avoid user enumeration; dummy verify on miss.
+// POST login, sets session cookie on success.
+// Same error message either way so emails cannot be guessed.
 export async function POST(req: Request) {
   const ip = getClientIp(req)
   const rl = checkRateLimit(`login:${ip}`, 10, 10 * 60 * 1000)

@@ -8,7 +8,7 @@ import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 
-// GET /api/appointments/[id] — admin-only single record (QR scan lookup).
+// GET one record for admin (used by QR scan).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(_req)
   if ('error' in auth) {
@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({ data: mapAppointmentRow(row) })
 }
 
-// PATCH /api/appointments/[id] — admin-only status update: { status }.
+// PATCH status only: { status }
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -55,8 +55,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
-    // Pre-migration databases lack the `status` column — apply the migration
-    // in place (same statement as d1/migrate_status.sql), then retry once.
+    // old db has no status column, add it then try once
     if (isMissingStatusColumn(msg)) {
       const healed = await ensureStatusColumn()
       if (healed.ok) {
@@ -91,7 +90,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ ok: true, status })
 }
 
-// PUT /api/appointments/[id] — admin-only full edit (reuses booking validation).
+// PUT full edit, admin only. Same validation as booking.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -132,7 +131,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const changed = await updateMain()
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
-    // Self-heal for the contact_number column, then retry once.
+    // if contact column missing, add then try once
     if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
       const healed = await ensureContactColumn()
       if (healed.ok) {
@@ -152,7 +151,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   return NextResponse.json({ ok: true })
 }
 
-// DELETE /api/appointments/[id] — admin-only.
+// DELETE one record, admin only.
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
