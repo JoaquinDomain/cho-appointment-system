@@ -5,6 +5,10 @@ import { APPOINTMENT_STATUSES } from './types'
 export interface AppointmentRow {
   id: string
   patient_name: string
+  last_name?: string | null
+  first_name?: string | null
+  middle_name?: string | null
+  birthdate?: string | null
   age: number
   contact_number?: string | null
   consultation_facility: string
@@ -16,6 +20,33 @@ export interface AppointmentRow {
   created_at: string
 }
 
+export function formatPatientName(last: string, first: string, middle: string): string {
+  const l = last.trim().replace(/\s+/g, ' ')
+  const f = first.trim().replace(/\s+/g, ' ')
+  const m = middle.trim().replace(/\s+/g, ' ')
+  return `${l}, ${f}${m ? ` ${m}` : ''}`
+}
+
+// Full years between birthdate (YYYY-MM-DD) and today. -1 if invalid/future.
+export function computeAge(birthdate: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthdate)) return -1
+  const [y, m, d] = birthdate.split('-').map(Number)
+  const born = new Date(y, m - 1, d)
+  if (Number.isNaN(born.getTime())) return -1
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const norm = `${born.getFullYear()}-${pad(born.getMonth() + 1)}-${pad(born.getDate())}`
+  if (norm !== birthdate) return -1
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (born > today) return -1
+  let age = today.getFullYear() - born.getFullYear()
+  const hadBirthday =
+    today.getMonth() > born.getMonth() ||
+    (today.getMonth() === born.getMonth() && today.getDate() >= born.getDate())
+  if (!hadBirthday) age -= 1
+  return age
+}
+
 export function mapAppointmentRow(row: AppointmentRow): Appointment {
   let tests: string[] = []
   try {
@@ -24,9 +55,21 @@ export function mapAppointmentRow(row: AppointmentRow): Appointment {
   } catch {
     tests = []
   }
+  const last = row.last_name ?? ''
+  const first = row.first_name ?? ''
+  const middle = row.middle_name ?? ''
+  const birthdate = row.birthdate ?? ''
+  // Old rows have no split names yet, fall back to the stored display name.
+  const patient_name =
+    row.patient_name ||
+    (last || first ? formatPatientName(last || '—', first || '—', middle) : '')
   return {
     id: row.id,
-    patient_name: row.patient_name,
+    patient_name,
+    last_name: last,
+    first_name: first,
+    middle_name: middle,
+    birthdate,
     age: row.age,
     contact_number: row.contact_number ?? '',
     consultation_facility: row.consultation_facility,

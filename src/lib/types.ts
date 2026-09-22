@@ -5,6 +5,10 @@ export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number]
 export interface Appointment {
   id: string
   patient_name: string
+  last_name: string
+  first_name: string
+  middle_name: string
+  birthdate: string
   age: number
   contact_number: string
   consultation_facility: string

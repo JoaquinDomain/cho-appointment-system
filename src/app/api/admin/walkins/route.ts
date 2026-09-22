@@ -8,6 +8,7 @@ import { TEST_CONFIG, onlineLimitFor, isOnlineOnly } from '@/lib/types'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
+import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { toSafeDetail } from '@/lib/utils/safe-detail'
 
@@ -113,8 +114,23 @@ export async function POST(req: Request) {
   const params = [
     id,
     parsed.data.patient_name,
+    parsed.data.last_name,
+    parsed.data.first_name,
+    parsed.data.middle_name,
+    parsed.data.birthdate,
     parsed.data.age,
     parsed.data.contact_number,
+    parsed.data.consultation_facility,
+    parsed.data.yakap_registered ? 1 : 0,
+    parsed.data.yakap_facility,
+    JSON.stringify(parsed.data.selected_tests),
+    parsed.data.appointment_date,
+    createdAt,
+  ]
+  const legacyParams = [
+    id,
+    parsed.data.patient_name,
+    parsed.data.age,
     parsed.data.consultation_facility,
     parsed.data.yakap_registered ? 1 : 0,
     parsed.data.yakap_facility,
@@ -125,16 +141,27 @@ export async function POST(req: Request) {
   const insertMain = () =>
     d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 'walkin', ?)`,
+        (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 'walkin', ?)`,
       params
     )
   try {
     await insertMain()
   } catch (e) {
-    // if contact column missing, add then try again
+    // if contact or name/birthdate columns missing, add then try again
     if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
       const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          await insertMain()
+          return NextResponse.json({ success: true, id }, { status: 201 })
+        } catch (retryErr) {
+          e = retryErr
+        }
+      }
+    }
+    if (isMissingNameColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureNameColumns()
       if (healed.ok) {
         try {
           await insertMain()
@@ -151,7 +178,7 @@ export async function POST(req: Request) {
           `INSERT INTO appointments
             (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          params
+          legacyParams
         )
       } catch (retryErr) {
         console.error('Walk-in insert failed (legacy retry):', retryErr)

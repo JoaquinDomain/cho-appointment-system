@@ -7,6 +7,7 @@ import { mapAppointmentRow, type AppointmentRow } from '@/lib/appointments'
 import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
+import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 
 // GET one record for admin (used by QR scan).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +113,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
   const updateParams = [
     parsed.data.patient_name,
+    parsed.data.last_name,
+    parsed.data.first_name,
+    parsed.data.middle_name,
+    parsed.data.birthdate,
     parsed.data.age,
     parsed.data.contact_number,
     parsed.data.consultation_facility,
@@ -123,7 +128,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   ]
   const updateMain = () =>
     d1Run(
-      `UPDATE appointments SET patient_name = ?, age = ?, contact_number = ?, consultation_facility = ?,
+      `UPDATE appointments SET patient_name = ?, last_name = ?, first_name = ?, middle_name = ?, birthdate = ?, age = ?, contact_number = ?, consultation_facility = ?,
         yakap_registered = ?, yakap_facility = ?, selected_tests = ?, appointment_date = ? WHERE id = ?`,
       updateParams
     )
@@ -131,9 +136,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const changed = await updateMain()
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
-    // if contact column missing, add then try once
+    // if contact or name/birthdate columns missing, add then try once
     if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
       const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          const changed = await updateMain()
+          if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
+          return NextResponse.json({ ok: true })
+        } catch (retryErr) {
+          console.error('Admin edit failed (post-migration retry):', retryErr)
+          return NextResponse.json({ error: 'Failed to update appointment.' }, { status: 500 })
+        }
+      }
+    }
+    if (isMissingNameColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureNameColumns()
       if (healed.ok) {
         try {
           const changed = await updateMain()

@@ -10,8 +10,10 @@ import TurnstileWidget from '@/components/TurnstileWidget'
 const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
 
 interface FormData {
-  fullName: string
-  age: string
+  lastName: string
+  firstName: string
+  middleName: string
+  birthdate: string
   contactNumber: string
   healthFacility: string
   yakapRegistered: boolean
@@ -22,6 +24,30 @@ interface FormData {
 
 const FIELD_CLASS =
   'w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 bg-white shadow-sm outline-none transition focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+
+function ageFromBirthdate(iso: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
+  const [y, m, d] = iso.split('-').map(Number)
+  const born = new Date(y, m - 1, d)
+  if (Number.isNaN(born.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (born > today) return null
+  let age = today.getFullYear() - born.getFullYear()
+  const hadBirthday =
+    today.getMonth() > born.getMonth() ||
+    (today.getMonth() === born.getMonth() && today.getDate() >= born.getDate())
+  if (!hadBirthday) age -= 1
+  return age
+}
+
+function displayName(last: string, first: string, middle: string): string {
+  const l = last.trim()
+  const f = first.trim()
+  const m = middle.trim()
+  if (!l && !f) return ''
+  return `${l}, ${f}${m ? ` ${m}` : ''}`
+}
 
 function prettyDate(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
@@ -163,8 +189,10 @@ function FastingNotice({ selectedTests }: { selectedTests: string[] }) {
 
 export default function AppointmentForm() {
   const [formData, setFormData] = useState<FormData>({
-    fullName: '',
-    age: '',
+    lastName: '',
+    firstName: '',
+    middleName: '',
+    birthdate: '',
     contactNumber: '',
     healthFacility: '',
     yakapRegistered: false,
@@ -291,8 +319,10 @@ export default function AppointmentForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patient_name: formData.fullName.trim(),
-          age: formData.age,
+          last_name: formData.lastName.trim(),
+          first_name: formData.firstName.trim(),
+          middle_name: formData.middleName.trim(),
+          birthdate: formData.birthdate,
           contact_number: formData.contactNumber.trim(),
           consultation_facility: formData.healthFacility,
           yakap_registered: formData.yakapRegistered,
@@ -368,7 +398,7 @@ export default function AppointmentForm() {
   const closedDayReason = formData.appointmentDate ? unavailableDateReason(formData.appointmentDate) : null
 
   const stepsDone = [
-    formData.fullName.trim().length >= 2 && formData.age !== '' && formData.contactNumber.trim().length >= 7,
+    formData.lastName.trim().length >= 2 && formData.firstName.trim().length >= 2 && formData.birthdate !== '' && formData.contactNumber.trim().length >= 7,
     formData.appointmentDate !== '' && formData.healthFacility !== '',
     true,
     formData.selectedTests.length > 0,
@@ -408,7 +438,11 @@ export default function AppointmentForm() {
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">Patient</dt>
-                <dd className="font-semibold text-slate-900 text-right truncate">{formData.fullName || '—'}</dd>
+                <dd className="font-semibold text-slate-900 text-right truncate">{displayName(formData.lastName, formData.firstName, formData.middleName) || '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Birthday</dt>
+                <dd className="font-semibold text-slate-900 text-right">{formData.birthdate || '—'}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-500">Tests</dt>
@@ -452,8 +486,10 @@ export default function AppointmentForm() {
               // availability instead of the base daily limit.
               // Bump quotaVersion to refetch authoritative counts from server.
               setFormData(prev => ({
-                fullName: '',
-                age: '',
+                lastName: '',
+                firstName: '',
+                middleName: '',
+                birthdate: '',
                 contactNumber: '',
                 healthFacility: '',
                 yakapRegistered: false,
@@ -510,34 +546,60 @@ export default function AppointmentForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Full Name <span className="text-red-500">*</span>
+                Last Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   className={`${FIELD_CLASS} pl-10`}
-                  placeholder="Juan D. Cruz"
+                  placeholder="Cruz"
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Age <span className="text-red-500">*</span>
+                First Name <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
                 required
-                min="1"
-                max="120"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                 className={FIELD_CLASS}
-                placeholder="e.g. 34"
+                placeholder="Juan"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Middle Name
+              </label>
+              <input
+                type="text"
+                value={formData.middleName}
+                onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                className={FIELD_CLASS}
+                placeholder="Dela Cruz (optional)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Birthday <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.birthdate}
+                max={todayStr}
+                onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
+                className={FIELD_CLASS}
+              />
+              {formData.birthdate && ageFromBirthdate(formData.birthdate) !== null && (
+                <p className="mt-1 text-xs text-slate-500">Age: {ageFromBirthdate(formData.birthdate)} years old</p>
+              )}
             </div>
           </div>
           <div className="mt-4">

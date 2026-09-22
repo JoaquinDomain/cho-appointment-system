@@ -10,6 +10,7 @@ import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
+import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { verifyTurnstile } from '@/lib/security/turnstile'
 
@@ -154,8 +155,23 @@ export async function POST(req: Request) {
   const params = [
     id,
     parsed.data.patient_name,
+    parsed.data.last_name,
+    parsed.data.first_name,
+    parsed.data.middle_name,
+    parsed.data.birthdate,
     parsed.data.age,
     parsed.data.contact_number,
+    parsed.data.consultation_facility,
+    parsed.data.yakap_registered ? 1 : 0,
+    parsed.data.yakap_facility,
+    JSON.stringify(parsed.data.selected_tests),
+    parsed.data.appointment_date,
+    createdAt,
+  ]
+  const legacyParams = [
+    id,
+    parsed.data.patient_name,
+    parsed.data.age,
     parsed.data.consultation_facility,
     parsed.data.yakap_registered ? 1 : 0,
     parsed.data.yakap_facility,
@@ -166,16 +182,28 @@ export async function POST(req: Request) {
   const insertMain = () =>
     d1Run(
       `INSERT INTO appointments
-        (id, patient_name, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
+        (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
       params
     )
   try {
     await insertMain()
   } catch (e) {
-    // if contact_number column is missing, add it then try again
-    if (isMissingContactColumn(e instanceof Error ? e.message : '')) {
+    // if contact_number or name/birthdate columns are missing, add them then try again
+    const msg0 = e instanceof Error ? e.message : ''
+    if (isMissingContactColumn(msg0)) {
       const healed = await ensureContactColumn()
+      if (healed.ok) {
+        try {
+          await insertMain()
+          return NextResponse.json({ success: true, id }, { status: 201 })
+        } catch (retryErr) {
+          e = retryErr
+        }
+      }
+    }
+    if (isMissingNameColumn(e instanceof Error ? e.message : '')) {
+      const healed = await ensureNameColumns()
       if (healed.ok) {
         try {
           await insertMain()
@@ -197,7 +225,7 @@ export async function POST(req: Request) {
           `INSERT INTO appointments
             (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          params
+          legacyParams
         )
       } catch (retryErr) {
         console.error('Booking insert failed (legacy retry):', retryErr)
@@ -282,9 +310,10 @@ export async function GET(req: Request) {
   const clauses: string[] = []
   const params: unknown[] = []
   if (search) {
-    // match name or exact id (for pasting id from confirmation)
-    clauses.push(`(patient_name LIKE ? ESCAPE '\\' OR id = ?)`)
-    params.push(`%${escapeLike(search)}%`, search)
+    // match display name, split names, or exact id (for pasting id from confirmation)
+    clauses.push(`(patient_name LIKE ? ESCAPE '\\' OR last_name LIKE ? ESCAPE '\\' OR first_name LIKE ? ESCAPE '\\' OR middle_name LIKE ? ESCAPE '\\' OR id = ?)`)
+    const like = `%${escapeLike(search)}%`
+    params.push(like, like, like, like, search)
   }
   if (facility) {
     clauses.push('consultation_facility = ?')
@@ -329,6 +358,32 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
+    // old db without split-name columns: add them then try once
+    if (isMissingNameColumn(msg)) {
+      const healed = await ensureNameColumns()
+      if (healed.ok) {
+        try {
+          const [countRow, rows] = await runList()
+          return NextResponse.json({
+            data: rows.map(mapAppointmentRow),
+            total: countRow[0]?.total ?? 0,
+            page,
+            limit,
+          })
+        } catch (retryErr) {
+          console.error('Admin list failed (post-migration retry):', retryErr)
+          return NextResponse.json(
+            { error: 'Failed to load appointments.', details: toSafeDetail(retryErr instanceof Error ? retryErr.message : '') },
+            { status: 500 }
+          )
+        }
+      }
+      console.error('Admin list failed (migration needed):', e)
+      return NextResponse.json(
+        { error: 'Failed to load appointments.', details: healed.message },
+        { status: 500 }
+      )
+    }
     // old db has no status column, add then try once
     if (isMissingStatusColumn(msg)) {
       const healed = await ensureStatusColumn()

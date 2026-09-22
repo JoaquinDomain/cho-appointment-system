@@ -22,8 +22,10 @@ export default function WalkinModal({
   onClose: () => void
   onCreated: () => void
 }) {
-  const [fullName, setFullName] = useState('')
-  const [age, setAge] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [middleName, setMiddleName] = useState('')
+  const [birthdate, setBirthdate] = useState('')
   const [contactNumber, setContactNumber] = useState('')
   const [facility, setFacility] = useState('')
   const [yakap, setYakap] = useState(false)
@@ -56,8 +58,10 @@ export default function WalkinModal({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          patient_name: fullName.trim(),
-          age,
+          last_name: lastName.trim(),
+          first_name: firstName.trim(),
+          middle_name: middleName.trim(),
+          birthdate,
           contact_number: contactNumber.trim(),
           consultation_facility: facility,
           yakap_registered: yakap,
@@ -115,12 +119,20 @@ export default function WalkinModal({
           <form onSubmit={submit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Full Name *</label>
-                <input required value={fullName} onChange={e => setFullName(e.target.value)} className={INPUT} placeholder="Juan D. Cruz" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Last Name *</label>
+                <input required value={lastName} onChange={e => setLastName(e.target.value)} className={INPUT} placeholder="Cruz" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Age *</label>
-                <input required type="number" min={1} max={120} value={age} onChange={e => setAge(e.target.value)} className={INPUT} placeholder="e.g. 34" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">First Name *</label>
+                <input required value={firstName} onChange={e => setFirstName(e.target.value)} className={INPUT} placeholder="Juan" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Middle Name</label>
+                <input value={middleName} onChange={e => setMiddleName(e.target.value)} className={INPUT} placeholder="Optional" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Birthday *</label>
+                <input required type="date" value={birthdate} max={todayLocal()} onChange={e => setBirthdate(e.target.value)} className={INPUT} />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Consultation Facility *</label>

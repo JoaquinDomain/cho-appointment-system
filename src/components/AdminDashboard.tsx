@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, Calendar, User, MapPin, Phone, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus, LayoutDashboard } from 'lucide-react'
 import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
+import { computeAge, formatPatientName } from '@/lib/appointments'
 import QRScanner from './QRScanner'
 import WalkinModal from './WalkinModal'
 
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
   const [deleteError, setDeleteError] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ patient_name: '', age: '', contact_number: '', consultation_facility: '', appointment_date: '' })
+  const [editForm, setEditForm] = useState({ last_name: '', first_name: '', middle_name: '', birthdate: '', contact_number: '', consultation_facility: '', appointment_date: '' })
   const [editError, setEditError] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -272,9 +273,30 @@ export default function AdminDashboard() {
 
   const openEdit = () => {
     if (!selectedAppointment) return
+    // Old rows may only have patient_name; split "Last, First Middle" as fallback.
+    let last = selectedAppointment.last_name ?? ''
+    let first = selectedAppointment.first_name ?? ''
+    let middle = selectedAppointment.middle_name ?? ''
+    if (!last && !first && selectedAppointment.patient_name) {
+      const raw = selectedAppointment.patient_name.trim()
+      if (raw.includes(',')) {
+        const [l, rest] = raw.split(',', 2)
+        last = l.trim()
+        const parts = (rest ?? '').trim().split(/\s+/)
+        first = parts.shift() ?? ''
+        middle = parts.join(' ')
+      } else {
+        const parts = raw.split(/\s+/)
+        first = parts.shift() ?? ''
+        last = parts.pop() ?? ''
+        middle = parts.join(' ')
+      }
+    }
     setEditForm({
-      patient_name: selectedAppointment.patient_name,
-      age: String(selectedAppointment.age),
+      last_name: last,
+      first_name: first,
+      middle_name: middle,
+      birthdate: selectedAppointment.birthdate ?? '',
       contact_number: selectedAppointment.contact_number ?? '',
       consultation_facility: selectedAppointment.consultation_facility,
       appointment_date: selectedAppointment.appointment_date,
@@ -293,8 +315,10 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          patient_name: editForm.patient_name,
-          age: Number(editForm.age),
+          last_name: editForm.last_name,
+          first_name: editForm.first_name,
+          middle_name: editForm.middle_name,
+          birthdate: editForm.birthdate,
           contact_number: editForm.contact_number,
           consultation_facility: editForm.consultation_facility,
           yakap_registered: selectedAppointment.yakap_registered,
@@ -310,10 +334,19 @@ export default function AdminDashboard() {
           : ''
         throw new Error(`${(json as { error?: string }).error ?? 'Update failed.'}${details}`)
       }
+      const last = editForm.last_name.trim()
+      const first = editForm.first_name.trim()
+      const middle = editForm.middle_name.trim()
+      const birthdate = editForm.birthdate
+      const computedAge = birthdate ? computeAge(birthdate) : NaN
       const updated = {
         ...selectedAppointment,
-        patient_name: editForm.patient_name.trim(),
-        age: Number(editForm.age),
+        patient_name: last && first ? formatPatientName(last, first, middle) : selectedAppointment.patient_name,
+        last_name: last,
+        first_name: first,
+        middle_name: middle,
+        birthdate,
+        age: Number.isInteger(computedAge) && (computedAge as number) >= 0 ? (computedAge as number) : selectedAppointment.age,
         contact_number: editForm.contact_number.trim(),
         consultation_facility: editForm.consultation_facility,
         appointment_date: editForm.appointment_date,
@@ -352,11 +385,11 @@ export default function AdminDashboard() {
         if (rows.length < 100 || all.length >= (json.total ?? 0) || all.length >= 2000) break
         p += 1
       }
-      const header = ['id', 'patient_name', 'age', 'contact_number', 'consultation_facility', 'yakap_registered', 'yakap_facility', 'selected_tests', 'appointment_date', 'status', 'created_at']
+      const header = ['id', 'last_name', 'first_name', 'middle_name', 'birthdate', 'patient_name', 'age', 'contact_number', 'consultation_facility', 'yakap_registered', 'yakap_facility', 'selected_tests', 'appointment_date', 'status', 'created_at']
       const lines = [header.join(',')]
       for (const a of all) {
         lines.push(
-          [a.id, a.patient_name, a.age, a.contact_number ?? '', a.consultation_facility, a.yakap_registered ? 'YES' : 'NO', a.yakap_facility ?? '', a.selected_tests.join('; '), a.appointment_date, a.status, a.created_at]
+          [a.id, a.last_name ?? '', a.first_name ?? '', a.middle_name ?? '', a.birthdate ?? '', a.patient_name, a.age, a.contact_number ?? '', a.consultation_facility, a.yakap_registered ? 'YES' : 'NO', a.yakap_facility ?? '', a.selected_tests.join('; '), a.appointment_date, a.status, a.created_at]
             .map(toCsvCell)
             .join(',')
         )
@@ -625,7 +658,7 @@ export default function AdminDashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search name or appointment ID..."
+                placeholder="Search last name, first name, or appointment ID..."
                 value={searchTerm}
                 onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
@@ -754,7 +787,7 @@ export default function AdminDashboard() {
                     >
                       {appointment.patient_name}
                     </button>
-                    <p className="text-sm text-gray-500">Age {appointment.age}{appointment.contact_number ? ` · ${appointment.contact_number}` : ''}</p>
+                    <p className="text-sm text-gray-500">Age {appointment.age}{appointment.birthdate ? ` · Born ${appointment.birthdate}` : ''}{appointment.contact_number ? ` · ${appointment.contact_number}` : ''}</p>
                   </div>
                   <span className="flex flex-col items-end gap-1">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -813,6 +846,9 @@ export default function AdminDashboard() {
                     Age
                   </th>
                   <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                    Birthday
+                  </th>
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     <Calendar className="inline w-4 h-4 mr-1" />
                     Appointment Date
                   </th>
@@ -841,7 +877,7 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <p className="font-semibold text-slate-700">No appointments found</p>
                       <p className="text-sm text-slate-500 mt-0.5">Try adjusting your search or filters.</p>
                     </td>
@@ -859,6 +895,9 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">{appointment.age}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{appointment.birthdate || '—'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{formatDate(appointment.appointment_date)}</div>
@@ -933,8 +972,29 @@ export default function AdminDashboard() {
                   <div className="flex items-start gap-2">
                     <User className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Age</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.age}</p>
+                      <p className="text-xs text-gray-500 uppercase">Last Name</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.last_name || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">First Name</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.first_name || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Middle Name</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.middle_name || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Birthday</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.birthdate ? `${selectedAppointment.birthdate} (Age ${selectedAppointment.age})` : `Age ${selectedAppointment.age}`}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
@@ -1036,11 +1096,17 @@ export default function AdminDashboard() {
                       <Pencil className="w-4 h-4" /> Edit appointment
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label className="text-sm text-gray-700">Patient name
-                        <input value={editForm.patient_name} onChange={(e) => setEditForm(f => ({ ...f, patient_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-gray-700">Last name
+                        <input value={editForm.last_name} onChange={(e) => setEditForm(f => ({ ...f, last_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
                       </label>
-                      <label className="text-sm text-gray-700">Age
-                        <input type="number" min={1} max={120} value={editForm.age} onChange={(e) => setEditForm(f => ({ ...f, age: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-gray-700">First name
+                        <input value={editForm.first_name} onChange={(e) => setEditForm(f => ({ ...f, first_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      </label>
+                      <label className="text-sm text-gray-700">Middle name
+                        <input value={editForm.middle_name} onChange={(e) => setEditForm(f => ({ ...f, middle_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" placeholder="Optional" />
+                      </label>
+                      <label className="text-sm text-gray-700">Birthday
+                        <input type="date" value={editForm.birthdate} onChange={(e) => setEditForm(f => ({ ...f, birthdate: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
                       </label>
                       <label className="text-sm text-gray-700">Contact number
                         <input type="tel" value={editForm.contact_number} onChange={(e) => setEditForm(f => ({ ...f, contact_number: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" placeholder="e.g. 0917 123 4567" />

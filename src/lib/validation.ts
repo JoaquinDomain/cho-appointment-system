@@ -18,6 +18,10 @@ function toLocalDay(d: Date): string {
 
 export interface ValidatedAppointmentInput {
   patient_name: string
+  last_name: string
+  first_name: string
+  middle_name: string
+  birthdate: string
   age: number
   contact_number: string
   consultation_facility: string
@@ -36,23 +40,80 @@ export function validateAppointmentInput(body: unknown):
   }
   const b = body as Record<string, unknown>
 
-  // patient_name: trim, 2–100 chars
-  const rawName = typeof b.patient_name === 'string' ? b.patient_name.trim().replace(/\s+/g, ' ') : ''
-  // fullName is old key, still accept it
-  const altName =
-    typeof (b as Record<string, unknown>).fullName === 'string'
-      ? String((b as Record<string, unknown>).fullName).trim().replace(/\s+/g, ' ')
-      : ''
-  const patient_name = rawName || altName
-  if (patient_name.length < 2 || patient_name.length > 100) {
-    errors.push('Full name must be 2–100 characters.')
+  // Names: last + first required, middle optional. Birthday replaces manual age.
+  const clean = (v: unknown) =>
+    typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : ''
+  const last_name = clean(b.last_name) || clean((b as Record<string, unknown>).lastName)
+  const first_name = clean(b.first_name) || clean((b as Record<string, unknown>).firstName)
+  const middle_name = clean(b.middle_name) || clean((b as Record<string, unknown>).middleName)
+  if (last_name.length < 2 || last_name.length > 50) {
+    errors.push('Last name must be 2–50 characters.')
+  }
+  if (first_name.length < 2 || first_name.length > 50) {
+    errors.push('First name must be 2–50 characters.')
+  }
+  if (middle_name.length > 50) {
+    errors.push('Middle name must be 50 characters or less.')
   }
 
-  // age can be string or number
-  const ageNum =
-    typeof b.age === 'number' ? b.age : typeof b.age === 'string' ? Number(b.age) : NaN
-  if (!Number.isInteger(ageNum) || ageNum < 1 || ageNum > 120) {
-    errors.push('Age must be a whole number between 1 and 120.')
+  // Birthdate YYYY-MM-DD, must be a real past date with age 1–120.
+  const birthdate = clean(b.birthdate)
+  let ageNum = NaN
+  if (!DATE_RE.test(birthdate)) {
+    errors.push('Birthday must be YYYY-MM-DD.')
+  } else {
+    const [by, bm, bd] = birthdate.split('-').map(Number)
+    const born = new Date(by, bm - 1, bd)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const norm =
+      !Number.isNaN(born.getTime())
+        ? `${born.getFullYear()}-${pad(born.getMonth() + 1)}-${pad(born.getDate())}`
+        : ''
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (norm !== birthdate) {
+      errors.push('Birthday is not a real calendar date.')
+    } else if (born > today) {
+      errors.push('Birthday cannot be in the future.')
+    } else {
+      let age = today.getFullYear() - born.getFullYear()
+      const hadBirthday =
+        today.getMonth() > born.getMonth() ||
+        (today.getMonth() === born.getMonth() && today.getDate() >= born.getDate())
+      if (!hadBirthday) age -= 1
+      if (age < 1 || age > 120) {
+        errors.push('Birthday must give an age between 1 and 120.')
+      } else {
+        ageNum = age
+      }
+    }
+  }
+
+  // Display name kept for lists/search/CSV: "Last, First Middle".
+  let patient_name =
+    last_name && first_name
+      ? `${last_name}, ${first_name}${middle_name ? ` ${middle_name}` : ''}`
+      : ''
+  // Old clients still send patient_name + age; accept as fallback.
+  if (!patient_name) {
+    const rawName = clean(b.patient_name)
+    const altName = clean((b as Record<string, unknown>).fullName)
+    const legacy = rawName || altName
+    if (legacy.length >= 2 && legacy.length <= 100) {
+      patient_name = legacy
+    } else {
+      errors.push('Last name and first name are required.')
+    }
+    const legacyAge =
+      typeof b.age === 'number' ? b.age : typeof b.age === 'string' ? Number(b.age) : NaN
+    if (!Number.isInteger(legacyAge) || legacyAge < 1 || legacyAge > 120) {
+      errors.push('Age must be a whole number between 1 and 120.')
+    } else if (Number.isNaN(ageNum)) {
+      ageNum = legacyAge
+    }
+  }
+  if (patient_name.length < 2 || patient_name.length > 100) {
+    errors.push('Full name must be 2–100 characters.')
   }
 
   // contact number, 7-15 digits only
@@ -161,6 +222,10 @@ export function validateAppointmentInput(body: unknown):
     ok: true,
     data: {
       patient_name,
+      last_name,
+      first_name,
+      middle_name,
+      birthdate,
       age: ageNum as number,
       contact_number: rawContact,
       consultation_facility: rawFacility,

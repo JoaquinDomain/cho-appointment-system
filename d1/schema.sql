@@ -8,6 +8,10 @@
 CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
   patient_name TEXT NOT NULL CHECK (length(patient_name) BETWEEN 2 AND 100),
+  last_name TEXT NOT NULL DEFAULT '' CHECK (length(last_name) <= 50),
+  first_name TEXT NOT NULL DEFAULT '' CHECK (length(first_name) <= 50),
+  middle_name TEXT NOT NULL DEFAULT '' CHECK (length(middle_name) <= 50),
+  birthdate TEXT NOT NULL DEFAULT '', -- YYYY-MM-DD
   age INTEGER NOT NULL CHECK (age BETWEEN 1 AND 120),
   contact_number TEXT NOT NULL DEFAULT '' CHECK (length(contact_number) <= 20),
   consultation_facility TEXT NOT NULL CHECK (length(consultation_facility) BETWEEN 2 AND 120),
@@ -21,6 +25,8 @@ CREATE TABLE IF NOT EXISTS appointments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_name ON appointments(patient_name);
+CREATE INDEX IF NOT EXISTS idx_appointments_last_name ON appointments(last_name);
+CREATE INDEX IF NOT EXISTS idx_appointments_first_name ON appointments(first_name);
 CREATE INDEX IF NOT EXISTS idx_appointments_consultation_facility ON appointments(consultation_facility);
 CREATE INDEX IF NOT EXISTS idx_appointments_appointment_date ON appointments(appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
