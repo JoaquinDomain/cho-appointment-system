@@ -20,11 +20,12 @@ const nextConfig: NextConfig = {
           {
             // Browser talks only to same-origin /api (D1 is server-side).
             // Kept compatible with Next.js inline scripts + Vercel Live.
-            // Tighten further (remove unsafe-inline) only with nonces.
+            // unsafe-eval removed; drop 'unsafe-inline' from script-src
+            // only together with a nonce strategy (follow-up hardening).
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://challenges.cloudflare.com",
+              "script-src 'self' 'unsafe-inline' https://vercel.live https://challenges.cloudflare.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
@@ -36,6 +37,7 @@ const nextConfig: NextConfig = {
               "form-action 'self'",
             ].join("; "),
           },
+          { key: "X-XSS-Protection", value: "0" },
         ],
       },
     ];

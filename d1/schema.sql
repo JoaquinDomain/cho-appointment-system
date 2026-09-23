@@ -4,6 +4,8 @@
 -- Existing databases (created before the status workflow): CREATE TABLE IF NOT
 -- EXISTS will NOT add new columns, so also apply:
 --   npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql
+--   npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_checked_in.sql
+-- (older DBs also need migrate_source.sql, migrate_names_birthday.sql, migrate_contact.sql)
 
 CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
@@ -21,6 +23,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_date TEXT NOT NULL, -- YYYY-MM-DD
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','completed','cancelled')),
   source TEXT NOT NULL DEFAULT 'online' CHECK (source IN ('online','walkin')),
+  checked_in_at TEXT, -- ISO timestamp of first successful QR check-in scan (one-time use)
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 

@@ -17,6 +17,8 @@ export interface Appointment {
   selected_tests: string[]
   appointment_date: string
   status: AppointmentStatus
+  /** Set on first successful QR check-in scan; null when not checked in. */
+  checked_in_at?: string | null
   created_at: string
 }
 

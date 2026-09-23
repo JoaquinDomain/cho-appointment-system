@@ -213,7 +213,11 @@ export default function AppointmentForm() {
   const [turnstileToken, setTurnstileToken] = useState('')
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false)
   const [honeypot, setHoneypot] = useState('')
-  const formStartedAt = useRef(Date.now())
+  const formStartedAt = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (formStartedAt.current === null) formStartedAt.current = Date.now()
+  }, [])
 
   useEffect(() => {
     let ignore = false
@@ -334,7 +338,7 @@ export default function AppointmentForm() {
             ? {
                 turnstileUnavailable: true,
                 website: honeypot,
-                formStartedAt: formStartedAt.current,
+                formStartedAt: formStartedAt.current ?? 0,
               }
             : {}),
         }),

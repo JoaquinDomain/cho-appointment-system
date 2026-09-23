@@ -17,6 +17,7 @@ export interface AppointmentRow {
   selected_tests: string
   appointment_date: string
   status?: string | null
+  checked_in_at?: string | null
   created_at: string
 }
 
@@ -80,6 +81,7 @@ export function mapAppointmentRow(row: AppointmentRow): Appointment {
     status: (APPOINTMENT_STATUSES as readonly string[]).includes(row.status ?? '')
       ? (row.status as AppointmentStatus)
       : 'pending',
+    checked_in_at: row.checked_in_at ?? null,
     created_at: row.created_at,
   }
 }

@@ -175,27 +175,47 @@ export default function AdminDashboard() {
     setShowScanner(false)
     setScanError('')
     const id = result.trim()
-    // check current page first so it opens fast
-    const local = appointments.find(apt => apt.id === id)
-    if (local) {
-      openDetails(local)
-      return
-    }
-    // 2) if not here, look up in server (checks id and login)
+    if (!id) return
+    // Always verify on the server: session, UUID, status, date and
+    // one-time use (checked_in_at). No local fast-path.
     try {
-      const res = await fetch(`/api/appointments/${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/appointments/${encodeURIComponent(id)}/check-in`, {
+        method: 'POST',
         credentials: 'same-origin',
       })
+      const json = await res.json().catch(() => ({}))
+      const data = (json as { data?: Appointment }).data
+      const errMsg = (json as { error?: string }).error
+      if (res.status === 401) {
+        setScanError('Session expired. Please log in again.')
+        return
+      }
       if (res.status === 404) {
         setScanError('Appointment not found with this QR code.')
         return
       }
-      if (!res.ok) throw new Error('Lookup failed.')
-      const json = await res.json()
-      openDetails(json.data as Appointment)
+      if (res.status === 400) {
+        setScanError('This QR code is not a valid appointment QR.')
+        return
+      }
+      if (res.status === 409) {
+        if (data) {
+          openDetails(data)
+          setDeleteError(errMsg || 'This QR code cannot be checked in.')
+        } else {
+          setScanError(errMsg || 'This QR code cannot be checked in.')
+        }
+        return
+      }
+      if (!res.ok || !data) {
+        setScanError(errMsg || 'QR check-in failed. Please try again.')
+        return
+      }
+      openDetails(data)
+      setAppointments(prev => prev.map(a => (a.id === data.id ? data : a)))
     } catch (err) {
-      console.error('QR lookup failed:', err)
-      setScanError('QR lookup failed. Please try again.')
+      console.error('QR check-in failed:', err)
+      setScanError('QR check-in failed. Please try again.')
     }
   }
 
@@ -1082,6 +1102,12 @@ export default function AdminDashboard() {
                   </div>
                   {updatingStatus && <p className="mt-1 text-xs text-gray-500">Updating…</p>}
                 </div>
+
+                {selectedAppointment.checked_in_at && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+                    Checked in: {formatDateTime(selectedAppointment.checked_in_at)}
+                  </div>
+                )}
 
                 <div>
                   <p className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">

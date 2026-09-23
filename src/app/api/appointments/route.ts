@@ -6,7 +6,6 @@ import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { TEST_CONFIG, onlineLimitForTest } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
-import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
@@ -33,8 +32,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
   }
 
-  // turnstile check, only if keys are set so local dev still works
-  if (process.env.TURNSTILE_SECRET_KEY) {
+  // human verification: fail closed in production if the secret is missing
+  const hasTurnstileSecret = Boolean(process.env.TURNSTILE_SECRET_KEY)
+  if (!hasTurnstileSecret && process.env.NODE_ENV === 'production') {
+    console.error('TURNSTILE_SECRET_KEY is not set — rejecting booking (fail closed).')
+    return NextResponse.json(
+      { error: 'Booking is temporarily unavailable. Please try again later.' },
+      { status: 503 }
+    )
+  }
+  if (hasTurnstileSecret) {
     const b =
       body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
     const token = String(b.turnstileToken ?? '')
@@ -113,18 +120,8 @@ export async function POST(req: Request) {
       }
     }
   } catch (e) {
+    // details stay in server logs — never sent to clients
     console.error('Quota check failed:', e)
-    const msg = e instanceof Error ? e.message : ''
-    if (/Missing D1 env/i.test(msg)) {
-      return NextResponse.json(
-        {
-          error: 'Failed to validate test quotas.',
-          details:
-            'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.',
-        },
-        { status: 500 }
-      )
-    }
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
@@ -229,52 +226,30 @@ export async function POST(req: Request) {
         )
       } catch (retryErr) {
         console.error('Booking insert failed (legacy retry):', retryErr)
-        const retryMsg = retryErr instanceof Error ? retryErr.message : ''
-        return NextResponse.json(
-          { error: 'Failed to create appointment.', details: toSafeDetail(retryMsg) },
-          { status: 500 }
-        )
+        return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
       }
     } else {
+      // details stay in server logs — never sent to clients
       console.error('Booking insert failed:', e)
       if (/CHECK|constraint/i.test(msg)) {
         return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
       }
       if (/no such table/i.test(msg)) {
-        return NextResponse.json(
-          {
-            error: 'Failed to create appointment.',
-            details:
-              'Appointments table not found. Apply the database schema: npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql',
-          },
-          { status: 500 }
+        console.error(
+          'Appointments table not found. Apply the database schema: npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql'
         )
       }
       if (/Missing D1 env/i.test(msg)) {
-        return NextResponse.json(
-          {
-            error: 'Failed to create appointment.',
-            details:
-              'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.',
-          },
-          { status: 500 }
+        console.error(
+          'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.'
         )
       }
       if (/unauthor|forbidden|permission|read.only|invalid.*token|HTTP 40[13]/i.test(msg)) {
-        return NextResponse.json(
-          {
-            error: 'Failed to create appointment.',
-            details:
-              'The database token cannot write (reads work, inserts fail). Use a Cloudflare API token with D1 Edit permission.',
-          },
-          { status: 500 }
+        console.error(
+          'The database token cannot write (reads work, inserts fail). Use a Cloudflare API token with D1 Edit permission.'
         )
       }
-      // show real db error (cleaned) instead of generic fail
-      return NextResponse.json(
-        { error: 'Failed to create appointment.', details: toSafeDetail(msg) },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
     }
   }
 
@@ -372,17 +347,11 @@ export async function GET(req: Request) {
           })
         } catch (retryErr) {
           console.error('Admin list failed (post-migration retry):', retryErr)
-          return NextResponse.json(
-            { error: 'Failed to load appointments.', details: toSafeDetail(retryErr instanceof Error ? retryErr.message : '') },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
         }
       }
-      console.error('Admin list failed (migration needed):', e)
-      return NextResponse.json(
-        { error: 'Failed to load appointments.', details: healed.message },
-        { status: 500 }
-      )
+      console.error('Admin list failed (migration needed):', e, healed.message)
+      return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
     }
     // old db has no status column, add then try once
     if (isMissingStatusColumn(msg)) {
@@ -398,17 +367,11 @@ export async function GET(req: Request) {
           })
         } catch (retryErr) {
           console.error('Admin list failed (post-migration retry):', retryErr)
-          return NextResponse.json(
-            { error: 'Failed to load appointments.', details: toSafeDetail(retryErr instanceof Error ? retryErr.message : '') },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
         }
       }
-      console.error('Admin list failed (migration needed):', e)
-      return NextResponse.json(
-        { error: 'Failed to load appointments.', details: healed.message },
-        { status: 500 }
-      )
+      console.error('Admin list failed (migration needed):', e, healed.message)
+      return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })
     }
     console.error('Admin list failed:', e)
     return NextResponse.json({ error: 'Failed to load appointments.' }, { status: 500 })

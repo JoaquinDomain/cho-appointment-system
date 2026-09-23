@@ -244,3 +244,18 @@ export function isValidUuid(id: string): boolean {
 export function isValidStatus(value: unknown): value is AppointmentStatus {
   return typeof value === 'string' && (APPOINTMENT_STATUSES as readonly string[]).includes(value)
 }
+
+// Light status state machine. Same-status is always allowed (idempotent).
+// The only blocked jump is cancelled -> completed (restore it first).
+const STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  pending: ['confirmed', 'completed', 'cancelled'],
+  confirmed: ['pending', 'completed', 'cancelled'],
+  completed: ['confirmed', 'cancelled'],
+  cancelled: ['pending', 'confirmed'],
+}
+
+export function canTransitionStatus(from: string, to: AppointmentStatus): boolean {
+  if (from === to) return true
+  const allowed = STATUS_TRANSITIONS[from as AppointmentStatus]
+  return Array.isArray(allowed) && allowed.includes(to)
+}

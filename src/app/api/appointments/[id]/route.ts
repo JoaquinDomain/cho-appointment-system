@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { d1First, d1Run } from '@/lib/db/d1'
 import { requireAdmin } from '@/lib/auth/session'
-import { isValidUuid, isValidStatus, validateAppointmentInput } from '@/lib/validation'
+import { isValidUuid, isValidStatus, canTransitionStatus, validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { mapAppointmentRow, type AppointmentRow } from '@/lib/appointments'
-import { toSafeDetail } from '@/lib/utils/safe-detail'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
@@ -37,6 +36,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
+  const ip = getClientIp(req)
+  const rl = checkRateLimit(`admin-edit:${ip}`, 60, 60 * 1000)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
+  }
   const { id } = await params
   if (!isValidUuid(id)) {
     return NextResponse.json({ error: 'Invalid appointment ID.' }, { status: 400 })
@@ -51,6 +55,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!isValidStatus(status)) {
     return NextResponse.json({ error: 'Invalid status.' }, { status: 400 })
   }
+
+  // light state machine: no arbitrary jumps (same status is always allowed)
+  let currentStatus: string | null = null
+  try {
+    const current = await d1First<{ status: string }>(
+      'SELECT status FROM appointments WHERE id = ?',
+      [id]
+    )
+    if (!current) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
+    currentStatus = current.status ?? 'pending'
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    if (isMissingStatusColumn(msg)) {
+      // legacy DB without status column: heal, then allow the update
+      await ensureStatusColumn()
+    } else {
+      console.error('Admin status pre-check failed:', e)
+      return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
+    }
+  }
+  if (currentStatus !== null && !canTransitionStatus(currentStatus, status)) {
+    return NextResponse.json(
+      { error: `Status cannot change from '${currentStatus}' to '${status}'.` },
+      { status: 409 }
+    )
+  }
+
   try {
     const changed = await d1Run('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
@@ -65,27 +96,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
         } catch (retryErr) {
           console.error('Admin status update failed (post-migration retry):', retryErr)
-          return NextResponse.json(
-            {
-              error: 'Failed to update status.',
-              details: toSafeDetail(retryErr instanceof Error ? retryErr.message : ''),
-            },
-            { status: 500 }
-          )
+          return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
         }
       } else {
-        console.error('Admin status update failed (migration needed):', e)
-        return NextResponse.json(
-          { error: 'Failed to update status.', details: healed.message },
-          { status: 500 }
-        )
+        console.error('Admin status update failed (migration needed):', e, healed.message)
+        return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
       }
     } else {
       console.error('Admin status update failed:', e)
-      return NextResponse.json(
-        { error: 'Failed to update status.', details: toSafeDetail(msg) },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
     }
   }
   return NextResponse.json({ ok: true, status })
@@ -96,6 +115,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const auth = await requireAdmin(req)
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
+  }
+  const ip = getClientIp(req)
+  const rl = checkRateLimit(`admin-edit:${ip}`, 60, 60 * 1000)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
   }
   const { id } = await params
   if (!isValidUuid(id)) {

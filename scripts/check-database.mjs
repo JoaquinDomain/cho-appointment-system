@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Database diagnostic tool - checks D1 connection and data
-import { d1Query, d1First } from '../src/lib/d1.js'
+import { d1Query } from '../src/lib/d1.js'
 
 async function checkDatabase() {
   console.log('🔍 Checking Cloudflare D1 database connection...\n')
@@ -8,7 +8,7 @@ async function checkDatabase() {
   try {
     // Check if we can connect to the database
     console.log('1. Testing database connection...')
-    const result = await d1Query('SELECT 1 as test')
+    await d1Query('SELECT 1 as test')
     console.log('✅ Database connection successful\n')
     
     // Check if appointments table exists

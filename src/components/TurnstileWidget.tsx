@@ -135,7 +135,9 @@ export default function TurnstileWidget({
     if (!siteKey) return
     let cancelled = false
     failures.current = 0
-    setFailed(false)
+    queueMicrotask(() => {
+      if (!cancelled) setFailed(false)
+    })
     loadScript(3)
       .then(() => {
         if (!cancelled) {

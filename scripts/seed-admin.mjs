@@ -45,4 +45,24 @@ if (!res.ok || json.success === false) {
   console.error('Seed failed:', JSON.stringify(json.errors || json).slice(0, 500));
   process.exit(1);
 }
+
+// Password changed/seeded — revoke every live session for this admin so a
+// stolen or stale cookie cannot keep working after a credential reset.
+const revokeRes = await fetch(endpoint, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${CLOUDFLARE_D1_API_TOKEN}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    sql: 'DELETE FROM admin_sessions WHERE email = ?',
+    params: [email],
+  }),
+});
+const revokeJson = await revokeRes.json().catch(() => ({}));
+if (!revokeRes.ok || revokeJson.success === false) {
+  console.warn('Warning: could not revoke existing sessions for this admin.');
+} else {
+  console.log('Existing sessions for this admin revoked.');
+}
 console.log(`Admin seeded: ${email}`);

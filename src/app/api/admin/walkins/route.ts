@@ -10,7 +10,6 @@ import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
-import { toSafeDetail } from '@/lib/utils/safe-detail'
 
 // POST /api/admin/walkins, admin only. Patient is here in person.
 // No turnstile, login is enough. Walkin uses the reserved half,
@@ -182,20 +181,15 @@ export async function POST(req: Request) {
         )
       } catch (retryErr) {
         console.error('Walk-in insert failed (legacy retry):', retryErr)
-        return NextResponse.json(
-          { error: 'Failed to register walk-in.', details: toSafeDetail(retryErr instanceof Error ? retryErr.message : '') },
-          { status: 500 }
-        )
+        return NextResponse.json({ error: 'Failed to register walk-in.' }, { status: 500 })
       }
     } else {
+      // details stay in server logs — never sent to clients
       console.error('Walk-in insert failed:', e)
       if (/CHECK|constraint/i.test(msg)) {
         return NextResponse.json({ error: 'Walk-in rejected. Please check the inputs.' }, { status: 400 })
       }
-      return NextResponse.json(
-        { error: 'Failed to register walk-in.', details: toSafeDetail(msg) },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to register walk-in.' }, { status: 500 })
     }
   }
 

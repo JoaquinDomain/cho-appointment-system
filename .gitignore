@@ -29,10 +29,17 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+dev-server.log
+
+# test artifacts
+*-test-results.csv
 
 # env files — never commit real credentials; .env.example is the safe template
 .env*
 !.env.example
+
+# database backups contain patient data (PHI) — never commit
+/backups/
 
 # devin files
 AGENTS.md
