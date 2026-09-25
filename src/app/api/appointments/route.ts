@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { d1Query, d1Run } from '@/lib/db/d1'
+import { dbQuery, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
@@ -12,6 +12,7 @@ import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-colum
 import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { verifyTurnstile } from '@/lib/security/turnstile'
+import { getDateBlockNote } from '@/lib/blocked-dates'
 
 // POST /api/appointments, public booking. With validation, quota and rate limit.
 // Server makes the id, ignore any id from client.
@@ -85,13 +86,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
 
+  // date blocked by an admin: no new bookings, whatever the quota says.
+  // Existing appointments on that date are untouched.
+  try {
+    const note = await getDateBlockNote(parsed.data.appointment_date)
+    if (note !== null) {
+      return NextResponse.json(
+        {
+          error: 'This date is unavailable.',
+          details: [note ? `${note} Please choose another day.` : 'Please choose another day.'],
+        },
+        { status: 409 }
+      )
+    }
+  } catch (e) {
+    // fail closed: without a working lookup the booking must not go through
+    console.error('Blocked date check failed:', e)
+    return NextResponse.json({ error: 'Failed to validate the appointment date.' }, { status: 500 })
+  }
+
   let existing: QuotaRow[]
   try {
     // read by date. cancelled frees the slot, walkins are separate
     // so online booking does not eat the walkin half.
     // old db may not have the new columns, fix then use old query.
     try {
-      existing = await d1Query<QuotaRow>(
+      existing = await dbQuery<QuotaRow>(
         'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
         [parsed.data.appointment_date]
       )
@@ -100,18 +120,18 @@ export async function POST(req: Request) {
       if (isMissingSourceColumn(msg)) {
         await ensureSourceColumn()
         try {
-          existing = await d1Query<QuotaRow>(
+          existing = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
             [parsed.data.appointment_date]
           )
         } catch {
-          existing = await d1Query<QuotaRow>(
+          existing = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
             [parsed.data.appointment_date]
           )
         }
       } else if (isMissingStatusColumn(msg)) {
-        existing = await d1Query<QuotaRow>(
+        existing = await dbQuery<QuotaRow>(
           'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
           [parsed.data.appointment_date]
         )
@@ -177,7 +197,7 @@ export async function POST(req: Request) {
     createdAt,
   ]
   const insertMain = () =>
-    d1Run(
+    dbRun(
       `INSERT INTO appointments
         (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
@@ -215,10 +235,10 @@ export async function POST(req: Request) {
     if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       console.warn(
         'appointments.status/source/contact column missing - booking with legacy schema. ' +
-          'Run: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql, ./d1/migrate_source.sql and ./d1/migrate_contact.sql'
+          'Re-apply the schema: mysql -h <host> -u <user> -p <database> < ./mysql/schema.sql'
       )
       try {
-        await d1Run(
+        await dbRun(
           `INSERT INTO appointments
             (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -234,19 +254,19 @@ export async function POST(req: Request) {
       if (/CHECK|constraint/i.test(msg)) {
         return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
       }
-      if (/no such table/i.test(msg)) {
+      if (/no such table|doesn't exist/i.test(msg)) {
         console.error(
-          'Appointments table not found. Apply the database schema: npx wrangler d1 execute cho-appointments --remote --file=./d1/schema.sql'
+          'Appointments table not found. Apply the database schema: mysql -h <host> -u <user> -p <database> < ./mysql/schema.sql'
         )
       }
-      if (/Missing D1 env/i.test(msg)) {
+      if (/Missing MySQL env/i.test(msg)) {
         console.error(
-          'Booking service is not configured. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_D1_API_TOKEN.'
+          'Booking service is not configured. Set MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE, MYSQL_USER and MYSQL_PASSWORD.'
         )
       }
-      if (/unauthor|forbidden|permission|read.only|invalid.*token|HTTP 40[13]/i.test(msg)) {
+      if (/access denied|ER_ACCESS_DENIED|ER_BAD_DB_ERROR|not allowed to connect/i.test(msg)) {
         console.error(
-          'The database token cannot write (reads work, inserts fail). Use a Cloudflare API token with D1 Edit permission.'
+          'The MySQL account cannot use the database (check MYSQL_USER / MYSQL_PASSWORD grants for bcho_lab_appointment).'
         )
       }
       return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
@@ -286,7 +306,9 @@ export async function GET(req: Request) {
   const params: unknown[] = []
   if (search) {
     // match display name, split names, or exact id (for pasting id from confirmation)
-    clauses.push(`(patient_name LIKE ? ESCAPE '\\' OR last_name LIKE ? ESCAPE '\\' OR first_name LIKE ? ESCAPE '\\' OR middle_name LIKE ? ESCAPE '\\' OR id = ?)`)
+    clauses.push(
+      `(patient_name LIKE ? ESCAPE '!' OR last_name LIKE ? ESCAPE '!' OR first_name LIKE ? ESCAPE '!' OR middle_name LIKE ? ESCAPE '!' OR id = ?)`
+    )
     const like = `%${escapeLike(search)}%`
     params.push(like, like, like, like, search)
   }
@@ -316,8 +338,8 @@ export async function GET(req: Request) {
 
   const runList = () =>
     Promise.all([
-      d1Query<{ total: number }>(`SELECT COUNT(*) AS total FROM appointments ${where}`, params),
-      d1Query<AppointmentRow>(
+      dbQuery<{ total: number }>(`SELECT COUNT(*) AS total FROM appointments ${where}`, params),
+      dbQuery<AppointmentRow>(
         `SELECT * FROM appointments ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
         [...params, limit, (page - 1) * limit]
       ),
@@ -327,7 +349,7 @@ export async function GET(req: Request) {
     const [countRow, rows] = await runList()
     return NextResponse.json({
       data: rows.map(mapAppointmentRow),
-      total: countRow[0]?.total ?? 0,
+      total: Number(countRow[0]?.total ?? 0),
       page,
       limit,
     })
@@ -341,7 +363,7 @@ export async function GET(req: Request) {
           const [countRow, rows] = await runList()
           return NextResponse.json({
             data: rows.map(mapAppointmentRow),
-            total: countRow[0]?.total ?? 0,
+            total: Number(countRow[0]?.total ?? 0),
             page,
             limit,
           })
@@ -361,7 +383,7 @@ export async function GET(req: Request) {
           const [countRow, rows] = await runList()
           return NextResponse.json({
             data: rows.map(mapAppointmentRow),
-            total: countRow[0]?.total ?? 0,
+            total: Number(countRow[0]?.total ?? 0),
             page,
             limit,
           })

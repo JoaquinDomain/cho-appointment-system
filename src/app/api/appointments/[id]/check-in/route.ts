@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { d1First, d1Run } from '@/lib/db/d1'
+import { dbFirst, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { isValidUuid } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
@@ -33,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let row: AppointmentRow | null
   try {
-    row = await d1First<AppointmentRow>('SELECT * FROM appointments WHERE id = ?', [id])
+    row = await dbFirst<AppointmentRow>('SELECT * FROM appointments WHERE id = ?', [id])
   } catch (e) {
     console.error('Check-in lookup failed:', e)
     return NextResponse.json({ error: 'Lookup failed.' }, { status: 500 })
@@ -75,7 +75,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const checkedInAt = new Date().toISOString()
   const markCheckedIn = () =>
-    d1Run(
+    dbRun(
       // guarded: only the first scan wins (race-safe one-time use)
       'UPDATE appointments SET checked_in_at = ? WHERE id = ? AND checked_in_at IS NULL',
       [checkedInAt, id]
@@ -85,7 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const changed = await markCheckedIn()
     if (changed === 0) {
       // another scan won the race — re-read to report the real timestamp
-      const fresh = await d1First<AppointmentRow>(
+      const fresh = await dbFirst<AppointmentRow>(
         'SELECT * FROM appointments WHERE id = ?',
         [id]
       ).catch(() => null)

@@ -214,9 +214,37 @@ export default function AppointmentForm() {
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false)
   const [honeypot, setHoneypot] = useState('')
   const formStartedAt = useRef<number | null>(null)
+  // dates an admin closed to new bookings: YYYY-MM-DD -> note
+  const [blockedDates, setBlockedDates] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (formStartedAt.current === null) formStartedAt.current = Date.now()
+  }, [])
+
+  // one call for the whole calendar; the server is authoritative either way
+  useEffect(() => {
+    let ignore = false
+    async function loadBlocked() {
+      try {
+        const res = await fetch('/api/blocked-dates', { cache: 'no-store' })
+        if (!res.ok || ignore) return
+        const data = await res.json()
+        if (ignore || !Array.isArray(data.blocked)) return
+        const map: Record<string, string> = {}
+        for (const item of data.blocked) {
+          if (item && typeof item.date === 'string') {
+            map[item.date] = typeof item.note === 'string' ? item.note : ''
+          }
+        }
+        setBlockedDates(map)
+      } catch (err) {
+        console.error('Error fetching blocked dates:', err)
+      }
+    }
+    loadBlocked()
+    return () => {
+      ignore = true
+    }
   }, [])
 
   useEffect(() => {
@@ -293,6 +321,11 @@ export default function AppointmentForm() {
     // closed day, ask user to pick another
     if (closedDayReason) {
       setSubmitError(`${closedDayReason} Please choose another day.`)
+      return
+    }
+    // date an admin blocked (calendar should prevent this, server too)
+    if (blockedDayMessage) {
+      setSubmitError(blockedDayMessage)
       return
     }
     // block submit if online slots are full for this date
@@ -400,6 +433,13 @@ export default function AppointmentForm() {
   }, [])
   // closed days cannot be picked
   const closedDayReason = formData.appointmentDate ? unavailableDateReason(formData.appointmentDate) : null
+  // date closed by an admin (the calendar greys these out too)
+  const blockedDayMessage = (() => {
+    if (!formData.appointmentDate) return null
+    if (!Object.prototype.hasOwnProperty.call(blockedDates, formData.appointmentDate)) return null
+    const note = blockedDates[formData.appointmentDate]
+    return note ? `${note} — please choose another day.` : 'This date is unavailable. Please choose another day.'
+  })()
 
   const stepsDone = [
     formData.lastName.trim().length >= 2 && formData.firstName.trim().length >= 2 && formData.birthdate !== '' && formData.contactNumber.trim().length >= 7,
@@ -632,9 +672,13 @@ export default function AppointmentForm() {
                 min={todayStr}
                 max={maxStr}
                 onChange={(iso) => setFormData({ ...formData, appointmentDate: iso })}
+                blocked={blockedDates}
               />
               {closedDayReason && (
                 <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
+              )}
+              {blockedDayMessage && (
+                <p className="mt-1.5 text-xs font-semibold text-red-700">{blockedDayMessage}</p>
               )}
             </div>
             <div>
@@ -764,6 +808,12 @@ export default function AppointmentForm() {
             <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {closedDayReason}
+            </p>
+          )}
+          {blockedDayMessage && (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {blockedDayMessage}
             </p>
           )}
           {loadingQuotas && (
@@ -910,7 +960,7 @@ export default function AppointmentForm() {
           </div>
           <button
             type="submit"
-            disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch || Boolean(closedDayReason)}
+            disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch || Boolean(closedDayReason) || Boolean(blockedDayMessage)}
             className="w-full px-6 py-4 bg-gradient-to-r from-sky-800 to-cyan-600 text-white rounded-xl hover:from-sky-900 hover:to-cyan-700 transition-all hover:shadow-xl hover:shadow-sky-500/25 hover:-translate-y-0.5 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-bold text-base shadow-lg"
           >
             {isSubmitting ? (

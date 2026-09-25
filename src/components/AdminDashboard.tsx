@@ -6,6 +6,7 @@ import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onli
 import { computeAge, formatPatientName } from '@/lib/appointments'
 import QRScanner from './QRScanner'
 import WalkinModal from './WalkinModal'
+import BlockedDatesModal from './BlockedDatesModal'
 
 const PAGE_SIZE = 25
 
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
   const [quotaLoading, setQuotaLoading] = useState(false)
   const [quotaError, setQuotaError] = useState('')
   const [showWalkin, setShowWalkin] = useState(false)
+  const [showBlockDate, setShowBlockDate] = useState(false)
 
   // list from server, admin api only. Session cookie is used.
   const fetchAppointments = useCallback(async (pageNum: number, search: string, facility: string, date: string, status: string, yakap: boolean) => {
@@ -592,6 +594,14 @@ export default function AdminDashboard() {
           >
             <BarChart3 className="w-4 h-4" />
             {showQuotas ? 'Hide Quotas' : 'Daily Quotas'}
+          </button>
+          <button
+            onClick={() => setShowBlockDate(true)}
+            title="Close a date to new bookings"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+          >
+            <Calendar className="w-4 h-4" />
+            Block Date
           </button>
           <button
             onClick={() => { setPage(1); setYakapOnly(v => !v) }}
@@ -1221,6 +1231,7 @@ export default function AdminDashboard() {
             }}
           />
         )}
+        {showBlockDate && <BlockedDatesModal onClose={() => setShowBlockDate(false)} />}
       </div>
     </div>
   )

@@ -17,7 +17,7 @@ if (!token) {
 
 const data = JSON.stringify({
   name: repoName,
-  description: 'CHO Laboratory Appointment Booking & Admin System - Next.js, Cloudflare D1, Tailwind CSS',
+  description: 'CHO Laboratory Appointment Booking & Admin System - Next.js, MySQL, Tailwind CSS',
   private: false,
   auto_init: false,
 });

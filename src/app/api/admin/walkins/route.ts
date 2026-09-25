@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { d1Query, d1Run } from '@/lib/db/d1'
+import { dbQuery, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
@@ -10,6 +10,7 @@ import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
 import { isMissingNameColumn, ensureNameColumns } from '@/lib/name-columns'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
+import { getDateBlockNote } from '@/lib/blocked-dates'
 
 // POST /api/admin/walkins, admin only. Patient is here in person.
 // No turnstile, login is enough. Walkin uses the reserved half,
@@ -38,6 +39,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Validation failed.', details: parsed.errors }, { status: 400 })
   }
 
+  // same rule as online booking: an admin-blocked date takes no new patients
+  try {
+    const note = await getDateBlockNote(parsed.data.appointment_date)
+    if (note !== null) {
+      return NextResponse.json(
+        {
+          error: note
+            ? `${note} This date is blocked for new patients.`
+            : 'This date is blocked for new patients.',
+        },
+        { status: 409 }
+      )
+    }
+  } catch (e) {
+    console.error('Blocked date check failed:', e)
+    return NextResponse.json({ error: 'Failed to validate the appointment date.' }, { status: 500 })
+  }
+
   // ECG cannot be walkin, online only
   const onlineOnly = parsed.data.selected_tests.filter(isOnlineOnly)
   if (onlineOnly.length > 0) {
@@ -50,7 +69,7 @@ export async function POST(req: Request) {
   let existing: QuotaRow[]
   try {
     try {
-      existing = await d1Query<QuotaRow>(
+      existing = await dbQuery<QuotaRow>(
         'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
         [parsed.data.appointment_date]
       )
@@ -59,18 +78,18 @@ export async function POST(req: Request) {
       if (isMissingSourceColumn(msg)) {
         await ensureSourceColumn()
         try {
-          existing = await d1Query<QuotaRow>(
+          existing = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
             [parsed.data.appointment_date]
           )
         } catch {
-          existing = await d1Query<QuotaRow>(
+          existing = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
             [parsed.data.appointment_date]
           )
         }
       } else if (isMissingStatusColumn(msg)) {
-        existing = await d1Query<QuotaRow>(
+        existing = await dbQuery<QuotaRow>(
           'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
           [parsed.data.appointment_date]
         )
@@ -138,7 +157,7 @@ export async function POST(req: Request) {
     createdAt,
   ]
   const insertMain = () =>
-    d1Run(
+    dbRun(
       `INSERT INTO appointments
         (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 'walkin', ?)`,
@@ -173,7 +192,7 @@ export async function POST(req: Request) {
     const msg = e instanceof Error ? e.message : ''
     if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
       try {
-        await d1Run(
+        await dbRun(
           `INSERT INTO appointments
             (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,

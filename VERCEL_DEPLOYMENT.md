@@ -1,5 +1,12 @@
 # Vercel Deployment Guide
 
+> **Retired — D1/Vercel flow no longer applies.**
+> The database is now MySQL 8.0 (`mysql/schema.sql`) reached directly from the
+> app server; `d1/`, `wrangler.toml`, and the `CLOUDFLARE_*` env vars are gone
+> from this repo. This document is kept only as a historical record — do not
+> follow it. For current setup, deployment prerequisites, and environment
+> variables see `SETUP.md` and `.env.example`.
+
 ## Prerequisites
 
 - GitHub repository created and code pushed

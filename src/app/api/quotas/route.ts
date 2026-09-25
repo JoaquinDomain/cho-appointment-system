@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { d1Query } from '@/lib/db/d1'
+import { dbQuery } from '@/lib/db/mysql'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     // need status+source so cancelled frees slot and online/walkin split.
     // old db may lack columns, fix then use old query.
     try {
-      rows = await d1Query<QuotaRow>(
+      rows = await dbQuery<QuotaRow>(
         'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
         [date]
       )
@@ -37,18 +37,18 @@ export async function GET(request: Request) {
       if (isMissingSourceColumn(msg)) {
         await ensureSourceColumn()
         try {
-          rows = await d1Query<QuotaRow>(
+          rows = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
             [date]
           )
         } catch {
-          rows = await d1Query<QuotaRow>(
+          rows = await dbQuery<QuotaRow>(
             'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
             [date]
           )
         }
       } else if (isMissingStatusColumn(msg)) {
-        rows = await d1Query<QuotaRow>('SELECT selected_tests FROM appointments WHERE appointment_date = ?', [
+        rows = await dbQuery<QuotaRow>('SELECT selected_tests FROM appointments WHERE appointment_date = ?', [
           date,
         ])
       } else {

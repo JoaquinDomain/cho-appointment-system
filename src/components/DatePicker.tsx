@@ -31,11 +31,14 @@ export default function DatePicker({
   min,
   max,
   onChange,
+  blocked = {},
 }: {
   value: string // YYYY-MM-DD or ''
   min: string // YYYY-MM-DD
   max: string // YYYY-MM-DD
   onChange: (iso: string) => void
+  // dates an admin closed to new bookings: YYYY-MM-DD -> note ('' if none)
+  blocked?: Record<string, string>
 }) {
   const now = new Date()
   const fallback = { y: now.getFullYear(), m0: now.getMonth() }
@@ -132,8 +135,15 @@ export default function DatePicker({
             const outOfRange = iso < min || iso > max
             const weekend = isWeekend(iso)
             const holiday = holidayName(iso)
-            const disabled = outOfRange || weekend || holiday !== null
+            const blockNote = Object.prototype.hasOwnProperty.call(blocked, iso) ? blocked[iso] : null
+            const blockedDay = blockNote !== null
+            const disabled = outOfRange || weekend || holiday !== null || blockedDay
             const selected = value === iso
+            const blockTitle = blockedDay
+              ? blockNote
+                ? `Closed: ${blockNote}`
+                : 'Closed — no bookings on this date'
+              : null
             return (
               <button
                 key={iso}
@@ -141,16 +151,18 @@ export default function DatePicker({
                 role="gridcell"
                 aria-selected={selected}
                 disabled={disabled}
-                title={holiday ?? (weekend ? 'Weekend — lab closed' : undefined)}
+                title={blockTitle ?? holiday ?? (weekend ? 'Weekend — lab closed' : undefined)}
                 onClick={() => onChange(iso)}
                 className={`py-2 rounded-xl border text-[15px] tabular-nums transition-all ${
                   selected
                     ? 'bg-emerald-600 border-emerald-600 text-white font-bold shadow'
-                    : holiday
-                      ? 'bg-amber-100 border-amber-200 text-amber-700 font-bold cursor-not-allowed'
-                      : disabled
-                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                        : 'bg-white border-slate-200 text-slate-900 hover:border-emerald-500 hover:bg-emerald-50 font-medium'
+                    : blockedDay
+                      ? 'bg-rose-100 border-rose-200 text-rose-600 font-bold cursor-not-allowed'
+                      : holiday
+                        ? 'bg-amber-100 border-amber-200 text-amber-700 font-bold cursor-not-allowed'
+                        : disabled
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-white border-slate-200 text-slate-900 hover:border-emerald-500 hover:bg-emerald-50 font-medium'
                 }`}
               >
                 {day}
@@ -167,6 +179,10 @@ export default function DatePicker({
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded-full bg-amber-100 border border-amber-200" />
             PH holiday
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-3.5 h-3.5 rounded-full bg-rose-100 border border-rose-200" />
+            Closed
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded-full bg-emerald-600" />

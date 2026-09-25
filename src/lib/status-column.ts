@@ -1,16 +1,21 @@
 // Old db has no status column yet. Add it here so old installs still work,
-// same as d1/migrate_status.sql.
-import { d1Query, d1Run } from './db/d1'
+// same as mysql/schema.sql.
+import { dbQuery, dbRun } from './db/mysql'
 
 export function isMissingStatusColumn(msg: string): boolean {
-  return /no\s+(such\s+column|column named)\s*:?\s*status/i.test(msg)
+  return (
+    // SQLite / D1 message (kept so a mixed deployment still heals)
+    /no\s+(such\s+column|column named)\s*:?\s*status/i.test(msg) ||
+    // MySQL 8.0: "Unknown column 'status' in 'field list'"
+    /unknown\s+column\s+'status'/i.test(msg)
+  )
 }
 
 export async function ensureStatusColumn(): Promise<
   { ok: true } | { ok: false; message: string }
 > {
   try {
-    await d1Query('SELECT status FROM appointments LIMIT 0')
+    await dbQuery('SELECT status FROM appointments LIMIT 0')
     return { ok: true }
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
@@ -22,11 +27,11 @@ export async function ensureStatusColumn(): Promise<
 
   console.warn(
     'appointments.status column missing - auto-applying migration. ' +
-      'Equivalent manual step: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql'
+      'Equivalent manual step: mysql < ./mysql/schema.sql'
   )
   try {
-    await d1Run(
-      `ALTER TABLE appointments ADD COLUMN status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','completed','cancelled'))`
+    await dbRun(
+      `ALTER TABLE appointments ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','completed','cancelled'))`
     )
     return { ok: true }
   } catch (e) {
@@ -37,7 +42,7 @@ export async function ensureStatusColumn(): Promise<
     return {
       ok: false,
       message:
-        'The database needs the status-column migration: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_status.sql',
+        'The database needs the status-column migration: re-apply ./mysql/schema.sql or run the ALTER TABLE from it.',
     }
   }
 }

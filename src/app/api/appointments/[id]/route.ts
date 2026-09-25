@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { d1First, d1Run } from '@/lib/db/d1'
+import { dbFirst, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { isValidUuid, isValidStatus, canTransitionStatus, validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   let row: AppointmentRow | null
   try {
-    row = await d1First<AppointmentRow>('SELECT * FROM appointments WHERE id = ?', [id])
+    row = await dbFirst<AppointmentRow>('SELECT * FROM appointments WHERE id = ?', [id])
   } catch (e) {
     console.error('Admin lookup failed:', e)
     return NextResponse.json({ error: 'Lookup failed.' }, { status: 500 })
@@ -59,7 +59,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // light state machine: no arbitrary jumps (same status is always allowed)
   let currentStatus: string | null = null
   try {
-    const current = await d1First<{ status: string }>(
+    const current = await dbFirst<{ status: string }>(
       'SELECT status FROM appointments WHERE id = ?',
       [id]
     )
@@ -83,7 +83,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const changed = await d1Run('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
+    const changed = await dbRun('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
     if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
@@ -92,7 +92,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const healed = await ensureStatusColumn()
       if (healed.ok) {
         try {
-          const changed = await d1Run('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
+          const changed = await dbRun('UPDATE appointments SET status = ? WHERE id = ?', [status, id])
           if (changed === 0) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
         } catch (retryErr) {
           console.error('Admin status update failed (post-migration retry):', retryErr)
@@ -151,7 +151,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     id,
   ]
   const updateMain = () =>
-    d1Run(
+    dbRun(
       `UPDATE appointments SET patient_name = ?, last_name = ?, first_name = ?, middle_name = ?, birthdate = ?, age = ?, contact_number = ?, consultation_facility = ?,
         yakap_registered = ?, yakap_facility = ?, selected_tests = ?, appointment_date = ? WHERE id = ?`,
       updateParams
@@ -212,7 +212,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   try {
-    await d1Run('DELETE FROM appointments WHERE id = ?', [id])
+    await dbRun('DELETE FROM appointments WHERE id = ?', [id])
   } catch (e) {
     console.error('Admin delete failed:', e)
     return NextResponse.json({ error: 'Failed to delete appointment.' }, { status: 500 })

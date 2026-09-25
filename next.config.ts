@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // mysql2 loads auth plugins and optional deps with runtime require();
+  // keep it out of the server bundle and let Node resolve it at runtime.
+  serverExternalPackages: ["mysql2"],
   async headers() {
     return [
       {
@@ -18,7 +21,7 @@ const nextConfig: NextConfig = {
             value: "max-age=63072000; includeSubDomains; preload",
           },
           {
-            // Browser talks only to same-origin /api (D1 is server-side).
+            // Browser talks only to same-origin /api (MySQL is server-side).
             // Kept compatible with Next.js inline scripts + Vercel Live.
             // unsafe-eval removed; drop 'unsafe-inline' from script-src
             // only together with a nonce strategy (follow-up hardening).

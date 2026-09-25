@@ -14,7 +14,7 @@ export default function AdminApp() {
   const [error, setError] = useState('')
   const [showPoster, setShowPoster] = useState(false)
 
-  // Session lives in an httpOnly cookie issued by /api/admin/login (D1-backed).
+  // Session lives in an httpOnly cookie issued by /api/admin/login (MySQL-backed).
   useEffect(() => {
     let cancelled = false
     fetch('/api/admin/me', { credentials: 'same-origin' })

@@ -10,6 +10,7 @@ const PUBLIC_API: Array<{ path: string; methods: string[] }> = [
   { path: '/api/admin/login', methods: ['POST'] },
   { path: '/api/admin/logout', methods: ['POST'] },
   { path: '/api/quotas', methods: ['GET'] },
+  { path: '/api/blocked-dates', methods: ['GET'] },
   // public booking (Turnstile + rate limits are enforced inside the route)
   { path: '/api/appointments', methods: ['POST'] },
 ]

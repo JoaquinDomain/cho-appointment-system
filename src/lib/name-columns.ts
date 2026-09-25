@@ -1,24 +1,30 @@
-// Old db has no split-name / birthdate columns yet. Same fix, see migrate_names_birthday.sql.
-import { d1Query, d1Run } from './db/d1'
+// Old db has no split-name / birthdate columns yet. Same fix, see mysql/schema.sql.
+import { dbQuery, dbRun } from './db/mysql'
 
 const COLUMNS = ['last_name', 'first_name', 'middle_name', 'birthdate'] as const
 
 type NameColumn = (typeof COLUMNS)[number]
 
 export function isMissingNameColumn(msg: string): boolean {
-  return COLUMNS.some((c) => new RegExp(`no\\s+(such\\s+column|column named)\\s*:?\\s*${c}`, 'i').test(msg))
+  return COLUMNS.some(
+    (c) =>
+      // SQLite / D1 message
+      new RegExp(`no\\s+(such\\s+column|column named)\\s*:?\\s*${c}`, 'i').test(msg) ||
+      // MySQL 8.0 message
+      new RegExp(`unknown\\s+column\\s+'${c}'`, 'i').test(msg)
+  )
 }
 
 function alterFor(col: NameColumn): string {
   switch (col) {
     case 'last_name':
-      return `ALTER TABLE appointments ADD COLUMN last_name TEXT NOT NULL DEFAULT '' CHECK (length(last_name) <= 50)`
+      return `ALTER TABLE appointments ADD COLUMN last_name VARCHAR(50) NOT NULL DEFAULT '' CHECK (CHAR_LENGTH(last_name) <= 50)`
     case 'first_name':
-      return `ALTER TABLE appointments ADD COLUMN first_name TEXT NOT NULL DEFAULT '' CHECK (length(first_name) <= 50)`
+      return `ALTER TABLE appointments ADD COLUMN first_name VARCHAR(50) NOT NULL DEFAULT '' CHECK (CHAR_LENGTH(first_name) <= 50)`
     case 'middle_name':
-      return `ALTER TABLE appointments ADD COLUMN middle_name TEXT NOT NULL DEFAULT '' CHECK (length(middle_name) <= 50)`
+      return `ALTER TABLE appointments ADD COLUMN middle_name VARCHAR(50) NOT NULL DEFAULT '' CHECK (CHAR_LENGTH(middle_name) <= 50)`
     case 'birthdate':
-      return `ALTER TABLE appointments ADD COLUMN birthdate TEXT NOT NULL DEFAULT ''`
+      return `ALTER TABLE appointments ADD COLUMN birthdate VARCHAR(10) NOT NULL DEFAULT ''`
   }
 }
 
@@ -28,10 +34,10 @@ export async function ensureNameColumns(): Promise<
   const missing: NameColumn[] = []
   for (const col of COLUMNS) {
     try {
-      await d1Query(`SELECT ${col} FROM appointments LIMIT 0`)
+      await dbQuery(`SELECT ${col} FROM appointments LIMIT 0`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : ''
-      if (isMissingNameColumn(msg) || /no such column/i.test(msg)) {
+      if (isMissingNameColumn(msg)) {
         missing.push(col)
       }
     }
@@ -40,12 +46,12 @@ export async function ensureNameColumns(): Promise<
 
   console.warn(
     `appointments.${missing.join(', ')} column(s) missing - auto-applying migration. ` +
-      'Equivalent manual step: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_names_birthday.sql'
+      'Equivalent manual step: mysql < ./mysql/schema.sql'
   )
   try {
     for (const col of missing) {
       try {
-        await d1Run(alterFor(col))
+        await dbRun(alterFor(col))
       } catch (e) {
         const msg = e instanceof Error ? e.message : ''
         if (!/duplicate column/i.test(msg)) throw e
@@ -57,7 +63,7 @@ export async function ensureNameColumns(): Promise<
     return {
       ok: false,
       message:
-        'The database needs the names-birthday migration: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_names_birthday.sql',
+        'The database needs the names-birthday migration: re-apply ./mysql/schema.sql or run the ALTER TABLE from it.',
     }
   }
 }

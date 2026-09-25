@@ -1,7 +1,7 @@
 import type { Appointment, AppointmentStatus } from './types'
 import { APPOINTMENT_STATUSES } from './types'
 
-// D1 saves yakap as 0/1 and tests as JSON string.
+// MySQL stores yakap as 0/1 and tests as a JSON string.
 export interface AppointmentRow {
   id: string
   patient_name: string
@@ -86,7 +86,9 @@ export function mapAppointmentRow(row: AppointmentRow): Appointment {
   }
 }
 
-// for LIKE search in sqlite
+// for LIKE search in MySQL. '!' is the escape char (see ESCAPE '!' in the
+// admin list query): it avoids backslash handling differences between SQL
+// modes, so user input can never change the shape of the pattern.
 export function escapeLike(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+  return value.replace(/[!%_]/g, (c) => `!${c}`)
 }

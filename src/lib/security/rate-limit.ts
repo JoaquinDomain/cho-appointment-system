@@ -1,7 +1,7 @@
 // Simple in-memory rate limit per server instance.
 // Old entries are cleared on each check.
 // NOTE: state is per-instance — on serverless each instance has its own
-// buckets and cold starts reset them. A shared store (D1/KV/Upstash)
+// buckets and cold starts reset them. A shared store (Redis/Upstash)
 // is the upgrade path if global limits are required.
 
 interface Bucket {

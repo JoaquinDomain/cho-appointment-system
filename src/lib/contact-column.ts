@@ -1,15 +1,19 @@
-// Old db has no contact_number yet. Same fix, see migrate_contact.sql.
-import { d1Query, d1Run } from './db/d1'
+// Old db has no contact_number yet. Same fix, see mysql/schema.sql.
+import { dbQuery, dbRun } from './db/mysql'
 
 export function isMissingContactColumn(msg: string): boolean {
-  return /no\s+(such\s+column|column named)\s*:?\s*contact_number/i.test(msg)
+  return (
+    /no\s+(such\s+column|column named)\s*:?\s*contact_number/i.test(msg) ||
+    // MySQL 8.0: "Unknown column 'contact_number' in 'field list'"
+    /unknown\s+column\s+'contact_number'/i.test(msg)
+  )
 }
 
 export async function ensureContactColumn(): Promise<
   { ok: true } | { ok: false; message: string }
 > {
   try {
-    await d1Query('SELECT contact_number FROM appointments LIMIT 0')
+    await dbQuery('SELECT contact_number FROM appointments LIMIT 0')
     return { ok: true }
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
@@ -20,11 +24,11 @@ export async function ensureContactColumn(): Promise<
 
   console.warn(
     'appointments.contact_number column missing - auto-applying migration. ' +
-      'Equivalent manual step: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_contact.sql'
+      'Equivalent manual step: mysql < ./mysql/schema.sql'
   )
   try {
-    await d1Run(
-      `ALTER TABLE appointments ADD COLUMN contact_number TEXT NOT NULL DEFAULT '' CHECK (length(contact_number) <= 20)`
+    await dbRun(
+      `ALTER TABLE appointments ADD COLUMN contact_number VARCHAR(20) NOT NULL DEFAULT '' CHECK (CHAR_LENGTH(contact_number) <= 20)`
     )
     return { ok: true }
   } catch (e) {
@@ -34,7 +38,7 @@ export async function ensureContactColumn(): Promise<
     return {
       ok: false,
       message:
-        'The database needs the contact-number migration: npx wrangler d1 execute cho-appointments --remote --file=./d1/migrate_contact.sql',
+        'The database needs the contact-number migration: re-apply ./mysql/schema.sql or run the ALTER TABLE from it.',
     }
   }
 }

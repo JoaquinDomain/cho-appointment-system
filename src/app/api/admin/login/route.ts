@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { d1First } from '@/lib/db/d1'
+import { dbFirst } from '@/lib/db/mysql'
 import { verifyPassword, verifyAgainstDummy } from '@/lib/auth/password'
 import { createSession, sessionCookieHeader } from '@/lib/auth/session'
 import {
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
   let row: { email: string; password_hash: string } | null = null
   try {
-    row = await d1First<{ email: string; password_hash: string }>(
+    row = await dbFirst<{ email: string; password_hash: string }>(
       'SELECT email, password_hash FROM admin_users WHERE email = ?',
       [email]
     )

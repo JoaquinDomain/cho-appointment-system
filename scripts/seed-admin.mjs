@@ -1,21 +1,19 @@
-/* Seed an admin user into D1 (fresh start).
- * Credentials and D1 coordinates come from environment only — never hardcode.
+/* Seed an admin user into MySQL (fresh start).
+ * Credentials and MySQL coordinates come from environment only — never hardcode.
  *
  * Usage (PowerShell):
- *   $env:CLOUDFLARE_ACCOUNT_ID='...'; $env:CLOUDFLARE_D1_DATABASE_ID='...'
- *   $env:CLOUDFLARE_D1_API_TOKEN='...'; $env:CHO_ADMIN_EMAIL='admin@cho.gov.ph'
- *   $env:CHO_ADMIN_PASSWORD='...'; node scripts/seed-admin.mjs
+ *   $env:MYSQL_HOST='127.0.0.1'; $env:MYSQL_DATABASE='bcho_lab_appointment'
+ *   $env:MYSQL_USER='cho_app'; $env:MYSQL_PASSWORD='...'
+ *   $env:CHO_ADMIN_EMAIL='admin@cho.gov.ph'; $env:CHO_ADMIN_PASSWORD='...'
+ *   node scripts/seed-admin.mjs
  */
 import { randomBytes, scryptSync } from 'node:crypto';
+import { createPool, loadEnv } from './db-env.mjs';
 
-const { CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, CLOUDFLARE_D1_API_TOKEN } = process.env;
-const email = (process.env.CHO_ADMIN_EMAIL || '').trim().toLowerCase();
-const password = process.env.CHO_ADMIN_PASSWORD || '';
+const env = loadEnv();
+const email = (env.CHO_ADMIN_EMAIL || '').trim().toLowerCase();
+const password = env.CHO_ADMIN_PASSWORD || '';
 
-if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_D1_DATABASE_ID || !CLOUDFLARE_D1_API_TOKEN) {
-  console.error('Missing env: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, CLOUDFLARE_D1_API_TOKEN.');
-  process.exit(1);
-}
 if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 12) {
   console.error('Set CHO_ADMIN_EMAIL (valid email) and CHO_ADMIN_PASSWORD (min 12 chars).');
   process.exit(1);
@@ -27,42 +25,26 @@ function hashPassword(pw) {
   return `scrypt$v=1$n=16384$r=8$p=1$${salt}$${hash}`;
 }
 
-const endpoint = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${CLOUDFLARE_D1_DATABASE_ID}/query`;
-const res = await fetch(endpoint, {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${CLOUDFLARE_D1_API_TOKEN}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    sql: 'INSERT INTO admin_users (email, password_hash) VALUES (?, ?) ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash',
-    params: [email, hashPassword(password)],
-  }),
-});
+const pool = createPool(env);
+try {
+  const hash = hashPassword(password);
+  await pool.execute(
+    'INSERT INTO admin_users (email, password_hash) VALUES (?, ?) ON DUPLICATE KEY UPDATE password_hash = ?',
+    [email, hash, hash]
+  );
 
-const json = await res.json().catch(() => ({}));
-if (!res.ok || json.success === false) {
-  console.error('Seed failed:', JSON.stringify(json.errors || json).slice(0, 500));
-  process.exit(1);
+  // Password changed/seeded — revoke every live session for this admin so a
+  // stolen or stale cookie cannot keep working after a credential reset.
+  try {
+    const [result] = await pool.execute('DELETE FROM admin_sessions WHERE email = ?', [email]);
+    console.log(`Existing sessions for this admin revoked (${result.affectedRows}).`);
+  } catch {
+    console.warn('Warning: could not revoke existing sessions for this admin.');
+  }
+  console.log(`Admin seeded: ${email}`);
+} catch (e) {
+  console.error('Seed failed:', e instanceof Error ? e.message : e);
+  process.exitCode = 1;
+} finally {
+  await pool.end();
 }
-
-// Password changed/seeded — revoke every live session for this admin so a
-// stolen or stale cookie cannot keep working after a credential reset.
-const revokeRes = await fetch(endpoint, {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${CLOUDFLARE_D1_API_TOKEN}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    sql: 'DELETE FROM admin_sessions WHERE email = ?',
-    params: [email],
-  }),
-});
-const revokeJson = await revokeRes.json().catch(() => ({}));
-if (!revokeRes.ok || revokeJson.success === false) {
-  console.warn('Warning: could not revoke existing sessions for this admin.');
-} else {
-  console.log('Existing sessions for this admin revoked.');
-}
-console.log(`Admin seeded: ${email}`);

@@ -1,7 +1,7 @@
-// Admin login session saved in D1.
-// Cookie has the token, D1 only keeps the hash.
+// Admin login session saved in MySQL.
+// Cookie has the token, MySQL only keeps the hash.
 import { createHash, randomBytes } from 'node:crypto'
-import { d1First, d1Run } from '../db/d1'
+import { dbFirst, dbRun } from '../db/mysql'
 
 export const SESSION_COOKIE = 'cho_admin_session'
 export const SESSION_MAX_AGE_SEC = 7 * 24 * 60 * 60 // 7 days
@@ -20,7 +20,7 @@ function nowSec(): number {
 export async function createSession(email: string): Promise<string> {
   const token = randomBytes(32).toString('hex')
   const now = nowSec()
-  await d1Run(
+  await dbRun(
     'INSERT INTO admin_sessions (token_hash, email, expires_at, created_at) VALUES (?, ?, ?, ?)',
     [hashToken(token), email, now + SESSION_MAX_AGE_SEC, now]
   )
@@ -29,7 +29,7 @@ export async function createSession(email: string): Promise<string> {
 
 /** Delete every session for one email (used when the password is reseeded). */
 export async function revokeSessionsForEmail(email: string): Promise<void> {
-  await d1Run('DELETE FROM admin_sessions WHERE email = ?', [email]).catch(() => 0)
+  await dbRun('DELETE FROM admin_sessions WHERE email = ?', [email]).catch(() => 0)
 }
 
 export function getSessionToken(req: Request): string | null {
@@ -52,20 +52,23 @@ export function getSessionToken(req: Request): string | null {
 export async function getSessionEmail(req: Request): Promise<string | null> {
   const token = getSessionToken(req)
   if (!token) return null
-  const row = await d1First<{ email: string; expires_at: number; created_at: number }>(
+  const row = await dbFirst<{ email: string; expires_at: number | string; created_at: number | string }>(
     'SELECT email, expires_at, created_at FROM admin_sessions WHERE token_hash = ?',
     [hashToken(token)]
   ).catch(() => null)
   if (!row) return null
   const now = nowSec()
-  const deadline = (row.created_at || 0) + SESSION_ABSOLUTE_MAX_AGE_SEC
-  if (row.expires_at <= now || now >= deadline) {
-    await d1Run('DELETE FROM admin_sessions WHERE token_hash = ?', [hashToken(token)]).catch(() => 0)
+  // BIGINT columns may come back as number or string depending on driver mode.
+  const expiresAt = Number(row.expires_at) || 0
+  const createdAt = Number(row.created_at) || 0
+  const deadline = createdAt + SESSION_ABSOLUTE_MAX_AGE_SEC
+  if (expiresAt <= now || now >= deadline) {
+    await dbRun('DELETE FROM admin_sessions WHERE token_hash = ?', [hashToken(token)]).catch(() => 0)
     return null
   }
-  if (row.expires_at - now < REFRESH_THRESHOLD_SEC) {
+  if (expiresAt - now < REFRESH_THRESHOLD_SEC) {
     const nextExpiry = Math.min(now + SESSION_MAX_AGE_SEC, deadline)
-    await d1Run('UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?', [
+    await dbRun('UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?', [
       nextExpiry,
       hashToken(token),
     ]).catch(() => 0)
@@ -74,7 +77,7 @@ export async function getSessionEmail(req: Request): Promise<string | null> {
 }
 
 /**
- * Cheap session check for the proxy: validates the token against D1 with
+ * Cheap session check for the proxy: validates the token against MySQL with
  * no side effects (no sliding refresh). Fails closed on errors.
  */
 export async function hasValidSession(req: Request): Promise<boolean> {
@@ -82,7 +85,7 @@ export async function hasValidSession(req: Request): Promise<boolean> {
   if (!token) return false
   const now = nowSec()
   try {
-    const row = await d1First<{ email: string }>(
+    const row = await dbFirst<{ email: string }>(
       'SELECT email FROM admin_sessions WHERE token_hash = ? AND expires_at > ? AND created_at > ?',
       [hashToken(token), now, now - SESSION_ABSOLUTE_MAX_AGE_SEC]
     )
@@ -96,7 +99,7 @@ export async function hasValidSession(req: Request): Promise<boolean> {
 export async function destroySession(req: Request): Promise<void> {
   const token = getSessionToken(req)
   if (!token) return
-  await d1Run('DELETE FROM admin_sessions WHERE token_hash = ?', [hashToken(token)]).catch(() => 0)
+  await dbRun('DELETE FROM admin_sessions WHERE token_hash = ?', [hashToken(token)]).catch(() => 0)
 }
 
 // Secure when running in production, and also whenever the request itself
