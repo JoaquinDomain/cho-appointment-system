@@ -23,12 +23,19 @@ const nextConfig: NextConfig = {
           {
             // Browser talks only to same-origin /api (MySQL is server-side).
             // Kept compatible with Next.js inline scripts + Vercel Live.
-            // unsafe-eval removed; drop 'unsafe-inline' from script-src
-            // only together with a nonce strategy (follow-up hardening).
+            // unsafe-eval only in dev (React debug call stacks); drop
+            // 'unsafe-inline' from script-src only together with a nonce
+            // strategy (follow-up hardening).
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://vercel.live https://challenges.cloudflare.com",
+              [
+                "script-src 'self' 'unsafe-inline'",
+                process.env.NODE_ENV !== "production" ? "'unsafe-eval'" : "",
+                "https://vercel.live https://challenges.cloudflare.com",
+              ]
+                .filter(Boolean)
+                .join(" "),
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
