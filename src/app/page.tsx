@@ -1,5 +1,6 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { HeartPulse, Clock, MapPin } from 'lucide-react'
+import { HeartPulse, Clock, MapPin, LockKeyhole } from 'lucide-react'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
 
@@ -46,6 +47,16 @@ export default function Home() {
         <p className="inline-flex items-center gap-1.5 text-xs text-slate-400">
           <MapPin className="w-3.5 h-3.5" />
           City Health Office &middot; Bacolod City &middot; Laboratory opens 8:00 AM
+        </p>
+        <p className="mt-3">
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+            title="CHO staff login"
+          >
+            <LockKeyhole className="w-3 h-3" />
+            CHO Staff Login
+          </Link>
         </p>
       </footer>
     </div>

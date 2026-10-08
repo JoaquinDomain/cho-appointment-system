@@ -1,7 +1,7 @@
 # Production Deployment — cho-services-appointment.bacolodcity.gov.ph
 
-Deploys the **patient booking site** (no `NEXT_PUBLIC_APP_MODE`) on the Bacolod MIT
-server behind nginx. The admin dashboard is a separate deployment (see SETUP.md).
+Deploys the **single combined site**: public booking at `/` plus staff login at
+`/admin` (footer link "CHO Staff Login"), both talking to the production MySQL.
 
 Pre-deploy gate (run locally, all must pass):
 
@@ -43,7 +43,7 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=bcho_lab_appointment
 MYSQL_USER=<from MIT>
 MYSQL_PASSWORD=<from MIT>
-# NEXT_PUBLIC_APP_MODE: leave UNSET — this is the patient site
+# NEXT_PUBLIC_APP_MODE: leave UNSET — single site (booking at /, staff at /admin)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=<key>
 TURNSTILE_SECRET_KEY=<key>    # booking fails closed without it
 ```
@@ -111,7 +111,7 @@ curl -s https://cho-services-appointment.bacolodcity.gov.ph/api/quotas
 - [ ] Booking page loads over HTTPS
 - [ ] Test appointment books and appears in the DB
 - [ ] Security headers present (`curl -sI ... | grep -i content-security`)
-- [ ] `/admin` returns 404 on the patient site (expected — admin is separate)
+- [ ] Footer link "CHO Staff Login" opens `/admin` and login works
 
 ## 8. Firewall / access (MIT)
 
@@ -138,4 +138,5 @@ cd /var/www/cho && git pull && npm ci && npm run build && pm2 restart cho
 
 - Never commit `.env.local`; rotate the MySQL password if it ever appears in chat/logs.
 - The domain currently serves a placeholder "HELLO" page — the vhost above replaces it.
-- Admin deployment: same steps, but set `NEXT_PUBLIC_APP_MODE=admin` before build.
+- `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (used for local
+  dev); production leaves it unset so `/` serves the booking form.
