@@ -9,6 +9,27 @@ const FACILITIES = new Set<string>(HEALTH_FACILITIES as readonly string[])
 const TESTS = new Set<string>(LABORATORY_TESTS as readonly string[])
 const MAX_FUTURE_DAYS = 180
 
+// C0/C1 control characters plus DEL. Legitimate names may contain letters,
+// spaces, hyphens, apostrophes, periods and even symbols like % (tests rely
+// on that), but never invisible control codes.
+export function hasControlChars(value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true
+  }
+  return false
+}
+
+/** True for a real calendar date in YYYY-MM-DD form (rejects 2026-02-30). */
+export function isRealDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false
+  const [y, m, d] = value.split('-').map(Number)
+  const parsed = new Date(y, m - 1, d)
+  if (Number.isNaN(parsed.getTime())) return false
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}` === value
+}
+
 function toLocalDay(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -54,6 +75,10 @@ export function validateAppointmentInput(body: unknown):
   }
   if (middle_name.length > 50) {
     errors.push('Middle name must be 50 characters or less.')
+  }
+  // control codes (null bytes etc.) never belong in a name
+  if (hasControlChars(last_name) || hasControlChars(first_name) || hasControlChars(middle_name)) {
+    errors.push('Names must not contain control characters.')
   }
 
   // Birthdate YYYY-MM-DD, must be a real past date with age 1–120.
@@ -103,6 +128,9 @@ export function validateAppointmentInput(body: unknown):
       patient_name = legacy
     } else {
       errors.push('Last name and first name are required.')
+    }
+    if (hasControlChars(patient_name)) {
+      errors.push('Name must not contain control characters.')
     }
     const legacyAge =
       typeof b.age === 'number' ? b.age : typeof b.age === 'string' ? Number(b.age) : NaN

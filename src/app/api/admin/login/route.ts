@@ -7,10 +7,12 @@ import {
   peekRateLimit,
   recordRateLimit,
   getClientIp,
+  limitFromEnv,
 } from '@/lib/security/rate-limit'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_PASSWORD_LEN = 1024
+// defaults; overridable via RL_LOGIN_FAIL_LIMIT / RL_LOGIN_FAIL_WINDOW_MS
 const ACCOUNT_FAIL_LIMIT = 5
 const ACCOUNT_FAIL_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
 
@@ -23,7 +25,8 @@ const invalidCredentials = () =>
 // so a distributed attacker still cannot brute-force one email).
 export async function POST(req: Request) {
   const ip = getClientIp(req)
-  const rl = checkRateLimit(`login:${ip}`, 10, 10 * 60 * 1000)
+  const ipLimit = limitFromEnv('RL_LOGIN_IP', 10, 10 * 60 * 1000)
+  const rl = checkRateLimit(`login:${ip}`, ipLimit.limit, ipLimit.windowMs)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many login attempts. Please try again later.' },
@@ -51,7 +54,12 @@ export async function POST(req: Request) {
   }
 
   const failKey = `login-fail:${email}`
-  const accountLimit = peekRateLimit(failKey, ACCOUNT_FAIL_LIMIT, ACCOUNT_FAIL_WINDOW_MS)
+  const accountLimitCfg = limitFromEnv(
+    'RL_LOGIN_FAIL',
+    ACCOUNT_FAIL_LIMIT,
+    ACCOUNT_FAIL_WINDOW_MS
+  )
+  const accountLimit = peekRateLimit(failKey, accountLimitCfg.limit, accountLimitCfg.windowMs)
   if (!accountLimit.allowed) {
     return NextResponse.json(
       { error: 'Too many login attempts. Please try again later.' },
@@ -72,11 +80,11 @@ export async function POST(req: Request) {
 
   if (!row) {
     verifyAgainstDummy(password)
-    recordRateLimit(failKey, ACCOUNT_FAIL_WINDOW_MS)
+    recordRateLimit(failKey, accountLimitCfg.windowMs)
     return invalidCredentials()
   }
   if (!verifyPassword(password, row.password_hash)) {
-    recordRateLimit(failKey, ACCOUNT_FAIL_WINDOW_MS)
+    recordRateLimit(failKey, accountLimitCfg.windowMs)
     return invalidCredentials()
   }
 

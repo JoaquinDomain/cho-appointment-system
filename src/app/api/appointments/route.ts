@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { dbQuery, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
-import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { checkRateLimit, getClientIp, limitFromEnv } from '@/lib/security/rate-limit'
 import { TEST_CONFIG, onlineLimitForTest } from '@/lib/types'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
@@ -18,7 +18,8 @@ import { getDateBlockNote } from '@/lib/blocked-dates'
 // Server makes the id, ignore any id from client.
 export async function POST(req: Request) {
   const ip = getClientIp(req)
-  const rl = checkRateLimit(`book:${ip}`, 10, 10 * 60 * 1000)
+  const bookLimit = limitFromEnv('RL_BOOK_IP', 10, 10 * 60 * 1000)
+  const rl = checkRateLimit(`book:${ip}`, bookLimit.limit, bookLimit.windowMs)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many booking attempts. Please try again later.' },
@@ -63,7 +64,12 @@ export async function POST(req: Request) {
       const fillMs = Date.now() - startedAt
       const humanTiming =
         Number.isFinite(fillMs) && fillMs >= 4000 && fillMs < 6 * 60 * 60 * 1000
-      const rlStrict = checkRateLimit(`book-unverified:${ip}`, 3, 60 * 60 * 1000)
+      const strictLimit = limitFromEnv('RL_BOOK_UNVERIFIED_IP', 3, 60 * 60 * 1000)
+      const rlStrict = checkRateLimit(
+        `book-unverified:${ip}`,
+        strictLimit.limit,
+        strictLimit.windowMs
+      )
       if (trap !== '' || !humanTiming || !rlStrict.allowed) {
         return NextResponse.json(
           { error: 'Human verification failed. Please refresh and try again.' },

@@ -6,9 +6,11 @@ Deploys the **single combined site**: public booking at `/` plus staff login at
 Pre-deploy gate (run locally, all must pass):
 
 ```bash
-npm run build                      # TypeScript + production build
-node security-tests/auth-e2e.mjs   # 12 checks (needs local dev server + DB)
-node security-tests/mysql-e2e.mjs  # 65 checks (self-contained)
+npx tsc --noEmit && npm run lint   # static checks
+npm run build                      # production build (refuses APP_MODE=admin)
+node security-tests/patient-url-test.mjs   # QR URL resolver (13 checks)
+node security-tests/build-guard-test.mjs   # build guard (4 checks)
+node security-tests/mysql-e2e.mjs  # 81 checks (self-contained, throwaway MySQL)
 ```
 
 ## 1. Server prerequisites
@@ -43,7 +45,10 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=bcho_lab_appointment
 MYSQL_USER=<from MIT>
 MYSQL_PASSWORD=<from MIT>
-# NEXT_PUBLIC_APP_MODE: leave UNSET — single site (booking at /, staff at /admin)
+# NEXT_PUBLIC_APP_MODE: leave UNSET — single site (booking at /, staff at /admin).
+# `next build` FAILS if this is set to 'admin' (build guard in next.config.ts).
+NEXT_PUBLIC_PATIENT_SITE_URL=https://cho-services-appointment.bacolodcity.gov.ph/
+                            # build-time; QR poster target (https only, *.vercel.app refused)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=<key>
 TURNSTILE_SECRET_KEY=<key>    # booking fails closed without it
 ```
@@ -138,5 +143,6 @@ cd /var/www/cho && git pull && npm ci && npm run build && pm2 restart cho
 
 - Never commit `.env.local`; rotate the MySQL password if it ever appears in chat/logs.
 - The domain currently serves a placeholder "HELLO" page — the vhost above replaces it.
-- `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (used for local
-  dev); production leaves it unset so `/` serves the booking form.
+- `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (local `next dev`
+  convenience); production leaves it unset so `/` serves the booking form, and
+  `next build` refuses to run if it is set to `admin` (build guard).

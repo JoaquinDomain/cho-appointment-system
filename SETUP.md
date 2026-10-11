@@ -50,10 +50,10 @@ MYSQL_PASSWORD=...
 # MYSQL_SSL_REJECT_UNAUTHORIZED=true
 ```
 
-Optional split-deployment variables (unchanged):
+Admin-mode redirect (local development only — `next dev`):
 
 ```env
-# NEXT_PUBLIC_APP_MODE=admin            # staff deployment only
+# NEXT_PUBLIC_APP_MODE=admin            # dev only; `next build` fails if set (guard)
 # NEXT_PUBLIC_PATIENT_SITE_URL=https://your-patient-site.example.com
 ```
 

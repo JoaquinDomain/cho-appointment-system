@@ -17,6 +17,39 @@ function prune(now: number, windowMs: number) {
   }
 }
 
+/**
+ * Read a rate-limit setting from the environment with a safe fallback.
+ * Looks up `<PREFIX>_LIMIT` (max requests) and `<PREFIX>_WINDOW_MS` (window
+ * length in milliseconds). Missing or invalid values fall back to the
+ * defaults, so a typo can never disable a limit.
+ *
+ * Configurable endpoints (see .env.example):
+ *   RL_LOGIN_IP_*             admin login attempts per IP        (10 / 10 min)
+ *   RL_LOGIN_FAIL_*           failed logins per account email    (5 / 15 min)
+ *   RL_BOOK_IP_*              public bookings per IP             (10 / 10 min)
+ *   RL_BOOK_UNVERIFIED_IP_*   bookings without Turnstile per IP  (3 / 60 min)
+ */
+export function limitFromEnv(
+  prefix: string,
+  fallbackLimit: number,
+  fallbackWindowMs: number
+): { limit: number; windowMs: number } {
+  const readInt = (name: string, fallback: number, min: number, max: number): number => {
+    const raw = process.env[name]
+    if (raw === undefined || raw === '') return fallback
+    const value = Number(raw)
+    if (!Number.isInteger(value) || value < min || value > max) {
+      console.warn(`Ignoring invalid ${name}; using default ${fallback}.`)
+      return fallback
+    }
+    return value
+  }
+  return {
+    limit: readInt(`${prefix}_LIMIT`, fallbackLimit, 1, 100000),
+    windowMs: readInt(`${prefix}_WINDOW_MS`, fallbackWindowMs, 1000, 24 * 60 * 60 * 1000),
+  }
+}
+
 /** Check the limit WITHOUT recording a hit (for fail-only counters). */
 export function peekRateLimit(
   key: string,
@@ -56,8 +89,8 @@ export function checkRateLimit(
 
 export function getClientIp(req: Request): string {
   // Trust only the RIGHTMOST x-forwarded-for entry: it is appended by the
-  // nearest trusted proxy (Vercel). Entries to the left are client-supplied
-  // and must never be used as a rate-limit key (they are spoofable).
+  // nearest trusted proxy (Nginx on MITCS). Entries to the left are
+  // client-supplied and must never be used as a rate-limit key (spoofable).
   const fwd = req.headers.get('x-forwarded-for')
   if (fwd) {
     const parts = fwd

@@ -50,6 +50,14 @@ export default function Home() {
         </p>
         <p className="mt-3">
           <Link
+            href="/privacy-policy"
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            Privacy Policy
+          </Link>
+        </p>
+        <p className="mt-2">
+          <Link
             href="/admin"
             className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
             title="CHO staff login"

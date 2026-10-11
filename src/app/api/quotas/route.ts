@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { dbQuery } from '@/lib/db/mysql'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { isRealDate } from '@/lib/validation'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
@@ -19,8 +20,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const date = (searchParams.get('date') ?? '').trim()
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return NextResponse.json({ error: 'Date parameter must be YYYY-MM-DD.' }, { status: 400 })
+  if (!isRealDate(date)) {
+    return NextResponse.json(
+      { error: 'Date parameter must be a real calendar date in YYYY-MM-DD form.' },
+      { status: 400 }
+    )
   }
 
   let rows: QuotaRow[]

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { ShieldCheck, QrCode, LayoutDashboard, LogOut } from 'lucide-react'
 import AdminDashboard from '@/components/AdminDashboard'
 import SiteQRPoster from '@/components/SiteQRPoster'
@@ -141,6 +142,14 @@ export default function AdminApp() {
 
           <p className="mt-4 text-center text-xs text-slate-400">
             Authorized CHO staff only
+          </p>
+          <p className="mt-1.5 text-center text-xs">
+            <Link
+              href="/privacy-policy"
+              className="text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+            >
+              Privacy Policy
+            </Link>
           </p>
         </div>
       </div>

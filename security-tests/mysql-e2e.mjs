@@ -21,8 +21,28 @@ import mysql from 'mysql2/promise'
 const PORT = Number(process.env.E2E_PORT || 3100)
 const BASE = `http://127.0.0.1:${PORT}`
 const pad = (n) => String(n).padStart(2, '0')
-// Server-local date: what the app's booking validation uses.
-const LOCAL_TODAY = `${new Date().getFullYear()}-${pad(new Date().getMonth() + 1)}-${pad(new Date().getDate())}`
+// Booking validation rejects weekends and PH holidays, so the suite books on
+// the NEXT open lab day instead of blindly using today (it can then run on
+// any day of the week). Holiday dates are parsed from the app's own list so
+// there is a single source of truth.
+const HOLIDAYS = new Set(
+  [...readFileSync(resolve(process.cwd(), 'src/lib/dates/holidays.ts'), 'utf8').matchAll(/'(\d{4}-\d{2}-\d{2})'/g)].map(
+    (m) => m[1]
+  )
+)
+function nextOpenDate() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  for (let i = 0; i < 400; i++) {
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const day = d.getDay()
+    if (day !== 0 && day <= 5 && !HOLIDAYS.has(iso) && i <= 180) return iso
+    d.setDate(d.getDate() + 1)
+  }
+  throw new Error('no open lab date found in the next 400 days')
+}
+// Server-local date used for bookings: the next open lab day.
+const LOCAL_TODAY = nextOpenDate()
 // Manila date: what the QR check-in window uses (UTC+8).
 const MANILA_TODAY = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10)
 const hashToken = (t) => createHash('sha256').update(t, 'utf8').digest('hex')
@@ -682,6 +702,154 @@ async function main() {
   console.log((authRun.stdout || '').trimEnd())
   if (authRun.stderr) console.error(authRun.stderr.trimEnd())
   add('security-tests/auth-e2e.mjs passes against MySQL', authRun.status === 0, `exit=${authRun.status}`)
+
+  // ---------- 11b. input hardening, rate limits, privacy page ----------
+  const hasCtrlDetail = (json) =>
+    String((Array.isArray(json?.details) ? json.details : []).join(' ')).includes('control character')
+
+  res = await fetch(`${BASE}/api/appointments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.30' },
+    body: JSON.stringify(booking({ last_name: `Bad${String.fromCharCode(7)}Name` })),
+  })
+  const ctrlJson = await res.json().catch(() => ({}))
+  add(
+    'booking with a control character in the name -> 400 (named reason)',
+    res.status === 400 && hasCtrlDetail(ctrlJson),
+    `status=${res.status}`
+  )
+
+  res = await fetch(`${BASE}/api/appointments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.31' },
+    body: JSON.stringify(booking({ first_name: `Null${String.fromCharCode(0)}Byte` })),
+  })
+  const nullJson = await res.json().catch(() => ({}))
+  add(
+    'booking with a null byte in the name -> 400 (named reason)',
+    res.status === 400 && hasCtrlDetail(nullJson),
+    `status=${res.status}`
+  )
+
+  res = await fetch(`${BASE}/api/admin/walkins`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.42' },
+    body: JSON.stringify(booking({ last_name: `Ctrl${String.fromCharCode(7)}Walkin`, first_name: 'Test', middle_name: '' })),
+  })
+  const ctrlWalkinJson = await res.json().catch(() => ({}))
+  add(
+    'walk-in with a control character in the name -> 400 (named reason)',
+    res.status === 400 && hasCtrlDetail(ctrlWalkinJson),
+    `status=${res.status}`
+  )
+
+  res = await fetch(`${BASE}/api/quotas?date=2026-02-30`, { headers: { 'X-Forwarded-For': '203.0.113.32' } })
+  add('GET /api/quotas with an impossible date -> 400', res.status === 400, `status=${res.status}`)
+
+  res = await fetch(`${BASE}/api/quotas?date=2026-13-01`, { headers: { 'X-Forwarded-For': '203.0.113.33' } })
+  add('GET /api/quotas with an impossible month -> 400', res.status === 400, `status=${res.status}`)
+
+  res = await fetch(`${BASE}/api/admin/blocked-dates`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.43' },
+    body: JSON.stringify({ date: openDate, note: `Lab${String.fromCharCode(7)}closed` }),
+  })
+  add('blocked-date note with a control character -> 400', res.status === 400, `status=${res.status}`)
+
+  // login rate limit: 11 attempts from a dedicated IP, unique emails so the
+  // per-account failure counter never triggers — the 11th must be 429.
+  const rlCodes = []
+  let rlRetryAfter = ''
+  for (let i = 1; i <= 11; i++) {
+    const rlRes = await fetch(`${BASE}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.210' },
+      body: JSON.stringify({ email: `rl3-probe-${i}@example.com`, password: 'wrongpassword123' }),
+    })
+    rlCodes.push(rlRes.status)
+    if (i === 11) rlRetryAfter = rlRes.headers.get('retry-after') || ''
+  }
+  add(
+    'login per-IP rate limit: 11th attempt -> 429',
+    rlCodes.slice(0, 10).every((c) => c !== 429) && rlCodes[10] === 429,
+    `codes=${rlCodes.join(',')}`
+  )
+  add('login 429 carries a Retry-After header', Boolean(rlRetryAfter), `retry-after=${rlRetryAfter}`)
+
+  // booking rate limit: empty bodies are rejected by verification (403) but
+  // each attempt still counts against the per-IP booking limit; the 11th
+  // attempt must be refused with 429 before any further work.
+  const bookCodes = []
+  let bookRetryAfter = ''
+  for (let i = 1; i <= 11; i++) {
+    const bRes = await fetch(`${BASE}/api/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.211' },
+      body: JSON.stringify({}),
+    })
+    bookCodes.push(bRes.status)
+    if (i === 11) bookRetryAfter = bRes.headers.get('retry-after') || ''
+  }
+  add(
+    'booking per-IP rate limit: 11th attempt -> 429',
+    bookCodes[10] === 429,
+    `codes=${bookCodes.join(',')}`
+  )
+  add('booking 429 carries a Retry-After header', Boolean(bookRetryAfter), `retry-after=${bookRetryAfter}`)
+
+  // privacy policy page: public, no login, cites RA 10173, keeps placeholders
+  res = await fetch(`${BASE}/privacy-policy`, { headers: { 'X-Forwarded-For': '203.0.113.34' } })
+  const privacyHtml = await res.text().catch(() => '')
+  add(
+    'GET /privacy-policy -> 200 without any login',
+    res.status === 200 && /Privacy Policy/.test(privacyHtml),
+    `status=${res.status}`
+  )
+  add(
+    'privacy page cites RA 10173 and keeps review placeholders visible',
+    /10173/.test(privacyHtml) && /PLACEHOLDER/.test(privacyHtml),
+    ''
+  )
+
+  res = await fetch(`${BASE}/`, { headers: { 'X-Forwarded-For': '203.0.113.35' }, redirect: 'manual' })
+  if (res.status === 200) {
+    const homeHtml = await res.text().catch(() => '')
+    add(
+      'patient homepage links to /privacy-policy',
+      homeHtml.includes('/privacy-policy'),
+      `status=${res.status}`
+    )
+  } else {
+    // Admin-mode build (NEXT_PUBLIC_APP_MODE=admin): / redirects to /admin and
+    // the footer link only exists on the patient-site build.
+    add(
+      'homepage in admin-mode build redirects / -> /admin (privacy link verified on patient builds)',
+      res.status >= 300 && res.status < 400,
+      `status=${res.status}`
+    )
+  }
+
+  // security headers + CSP: full header set present, Turnstile still allowed,
+  // and the retired vercel.live host no longer appears anywhere in the CSP.
+  res = await fetch(`${BASE}/privacy-policy`, { headers: { 'X-Forwarded-For': '203.0.113.36' } })
+  const csp = res.headers.get('content-security-policy') || ''
+  add(
+    'security headers: nosniff, DENY, referrer, HSTS, permissions',
+    res.headers.get('x-content-type-options') === 'nosniff' &&
+      res.headers.get('x-frame-options') === 'DENY' &&
+      res.headers.get('referrer-policy') === 'strict-origin-when-cross-origin' &&
+      Boolean(res.headers.get('strict-transport-security')) &&
+      Boolean(res.headers.get('permissions-policy')),
+    `status=${res.status}`
+  )
+  add(
+    'CSP present with frame-ancestors none + Turnstile sources',
+    csp.includes("frame-ancestors 'none'") &&
+      csp.includes('https://challenges.cloudflare.com') &&
+      csp.includes("default-src 'self'"),
+    csp.slice(0, 120)
+  )
+  add('CSP no longer allows the retired vercel.live host', !csp.includes('vercel.live'), '')
 
   // ---------- 12. session lifetime ----------
   await conn.execute('UPDATE admin_sessions SET expires_at = ? WHERE token_hash = ?', [

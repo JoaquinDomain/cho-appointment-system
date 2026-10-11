@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/session'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { hasControlChars } from '@/lib/validation'
 import {
   MAX_NOTE_LENGTH,
   blockDate,
@@ -41,6 +42,9 @@ function parseNote(value: unknown): { ok: true; note: string } | { ok: false; er
   const note = value.trim()
   if (note.length > MAX_NOTE_LENGTH) {
     return { ok: false, error: `Note must be at most ${MAX_NOTE_LENGTH} characters.` }
+  }
+  if (hasControlChars(note)) {
+    return { ok: false, error: 'Note must not contain control characters.' }
   }
   return { ok: true, note }
 }

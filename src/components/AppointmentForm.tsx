@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck } from 'lucide-react'
+import Link from 'next/link'
+import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck, ShieldCheck } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
@@ -920,6 +921,25 @@ export default function AppointmentForm() {
         {requiresFasting && (
           <FastingNotice selectedTests={formData.selectedTests} />
         )}
+
+        {/* Privacy notice: transparency under RA 10173. This is a notice, not a
+            consent checkbox — the City Health Office processes booking data to
+            deliver the requested public health service. */}
+        <div className="flex gap-2.5 p-3.5 bg-sky-50 border border-sky-200 rounded-2xl">
+          <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-sky-700" />
+          <p className="text-[13px] leading-relaxed text-slate-700">
+            Your information is used only to schedule and prepare your laboratory
+            visit, and is handled in accordance with Republic Act No. 10173 (Data
+            Privacy Act of 2012).{' '}
+            <Link
+              href="/privacy-policy"
+              className="font-semibold text-sky-800 underline underline-offset-2 hover:text-sky-900"
+            >
+              Read the Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
 
         {submitError && (
           <div className="flex gap-2.5 p-4 bg-red-50 border border-red-200 rounded-2xl" role="alert">

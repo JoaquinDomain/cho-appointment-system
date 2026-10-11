@@ -107,15 +107,62 @@ The system uses MySQL tables (see `mysql/schema.sql`):
   and writes go through validated, rate-limited `/api` routes
 - **Authentication**: scrypt-hashed passwords + opaque sessions in httpOnly cookies
 - **Environment Variables**: MySQL credentials are server-only env vars
+- **Build-mode guard**: `next build` refuses to run when
+  `NEXT_PUBLIC_APP_MODE=admin` is set (see `next.config.ts`), so a production
+  build can never ship a patient homepage that redirects to `/admin`
+- **QR poster URL safety**: the admin QR poster validates
+  `NEXT_PUBLIC_PATIENT_SITE_URL` (https required, `*.vercel.app` refused in
+  production) and shows an explicit error instead of generating a QR code for
+  a wrong or retired URL (see `src/lib/patient-site-url.ts`)
+
+### Rate limiting
+
+Every API route is rate-limited per client IP. Client IPs come from the
+rightmost `X-Forwarded-For` entry only (the one appended by the trusted
+reverse proxy), so spoofed left-hand entries cannot mint fresh buckets.
+
+| Endpoint | Default limit | Override with |
+| --- | --- | --- |
+| `POST /api/admin/login` (per IP) | 10 / 10 min | `RL_LOGIN_IP_LIMIT`, `RL_LOGIN_IP_WINDOW_MS` |
+| `POST /api/admin/login` (failures per account email) | 5 / 15 min | `RL_LOGIN_FAIL_LIMIT`, `RL_LOGIN_FAIL_WINDOW_MS` |
+| `POST /api/appointments` (public booking per IP) | 10 / 10 min | `RL_BOOK_IP_LIMIT`, `RL_BOOK_IP_WINDOW_MS` |
+| `POST /api/appointments` without Turnstile per IP | 3 / 60 min | `RL_BOOK_UNVERIFIED_IP_LIMIT`, `RL_BOOK_UNVERIFIED_IP_WINDOW_MS` |
+| Other admin routes (list, edit, delete, check-in, walk-in, blocked dates) | fixed per route (30–120 / min) | edit the route file |
+
+Exceeded limits return HTTP 429 with a `Retry-After` header (where the route
+sets one). Counters live in server memory: they reset on restart and are
+per instance. If the app is ever scaled to multiple instances or needs
+global limits, a shared store (e.g. Redis) is the upgrade path — coordinate
+with MITCS before adding infrastructure.
 
 ## Deployment
 
 ### Environment Variables
 
-Server-only, set in the service environment (or `.env.local` for local runs):
-- `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`
-- Optional: `MYSQL_CONNECTION_LIMIT`, `MYSQL_SSL*` (see `.env.example`)
-- `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (public booking)
+Two kinds — `.env.example` explains each key:
+
+- **Build-time (`NEXT_PUBLIC_*`)**: inlined into the JavaScript bundle when
+  `npm run build` runs. Changing them later requires a rebuild.
+  - `NEXT_PUBLIC_APP_MODE`: leave **unset** for production (build fails if set
+    to `admin`; only for `next dev` convenience)
+  - `NEXT_PUBLIC_PATIENT_SITE_URL`: official patient booking URL for the QR
+    poster (production must be the `https://cho-services-appointment.bacolodcity.gov.ph`
+    domain; `*.vercel.app` is refused at render time)
+  - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: Turnstile widget key
+- **Runtime (server-only, no rebuild needed)**:
+  - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`
+  - Optional: `MYSQL_CONNECTION_LIMIT`, `MYSQL_SSL*` (see `.env.example`)
+  - `TURNSTILE_SECRET_KEY`
+  - Optional: `RL_*` rate-limit overrides (see “Rate limiting” above and `.env.example`)
+
+**MITCS pre-deploy checklist:**
+
+1. `.env.local` exists at the app root, `chmod 600`, not committed
+2. `NEXT_PUBLIC_APP_MODE` **absent** (build guard will fail the build otherwise)
+3. `NEXT_PUBLIC_PATIENT_SITE_URL` set to the official `https://` domain
+4. MySQL credentials point at `127.0.0.1` / `bcho_lab_appointment`
+5. Both Turnstile keys set (booking fails closed in production without them)
+6. Run `npx tsc --noEmit && npm run lint && npm run build` before `npm start`
 
 Build and run behind your web server / reverse proxy:
 
