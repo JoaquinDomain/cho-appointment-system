@@ -4,6 +4,12 @@ import { HeartPulse, Clock, MapPin, LockKeyhole } from 'lucide-react'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
 
+// The calendar and birthday limits derive from "today". Render per request so
+// the served HTML always carries current dates — a statically-prerendered copy
+// goes stale and its calendar grid no longer matches what the browser computes,
+// which breaks hydration of the date picker.
+export const dynamic = 'force-dynamic'
+
 export default function Home() {
   if (isAdminSite) {
     redirect('/admin')

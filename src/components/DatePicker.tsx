@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { holidayName, isWeekend } from '@/lib/dates/holidays'
+import { useHydrated } from '@/lib/useHydrated'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -43,6 +44,7 @@ export default function DatePicker({
   const now = new Date()
   const fallback = { y: now.getFullYear(), m0: now.getMonth() }
   const sel = value ? parseISO(value) : null
+  const hydrated = useHydrated()
   const [view, setView] = useState<{ y: number; m0: number }>(
     sel ? { y: sel.y, m0: sel.m0 } : fallback
   )
@@ -98,12 +100,12 @@ export default function DatePicker({
         <CalendarIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-900 pointer-events-none" />
       </div>
 
-      <div className="mt-3 rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+      <div className={`mt-3 rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4 transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
         <div className="flex items-center justify-between mb-2">
           <button
             type="button"
             onClick={() => move(-1)}
-            disabled={viewKey <= minKey}
+            disabled={!hydrated || viewKey <= minKey}
             aria-label="Previous month"
             className="p-1.5 rounded-lg text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -115,7 +117,7 @@ export default function DatePicker({
           <button
             type="button"
             onClick={() => move(1)}
-            disabled={viewKey >= maxKey}
+            disabled={!hydrated || viewKey >= maxKey}
             aria-label="Next month"
             className="p-1.5 rounded-lg text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -150,7 +152,7 @@ export default function DatePicker({
                 type="button"
                 role="gridcell"
                 aria-selected={selected}
-                disabled={disabled}
+                disabled={!hydrated || disabled}
                 title={blockTitle ?? holiday ?? (weekend ? 'Weekend — lab closed' : undefined)}
                 onClick={() => onChange(iso)}
                 className={`py-2 rounded-xl border text-[15px] tabular-nums transition-all ${

@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Download, Search, X, Moon, ClipboardCheck, ShieldCheck } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Search, X, Moon, ClipboardCheck, ShieldCheck } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
-import { QRCodeCanvas } from 'qrcode.react'
+import { useHydrated } from '@/lib/useHydrated'
 import TurnstileWidget from '@/components/TurnstileWidget'
+
+// QR code is only needed on the confirmation screen; keep qrcode.react out of
+// the initial hydration bundle so the calendar and YAKAP toggles go live sooner.
+const ConfirmationQRCode = dynamic(() => import('@/components/ConfirmationQRCode'))
 
 const TURNSTILE_ENABLED = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
 
@@ -215,6 +220,7 @@ export default function AppointmentForm() {
   const [turnstileUnavailable, setTurnstileUnavailable] = useState(false)
   const [honeypot, setHoneypot] = useState('')
   const formStartedAt = useRef<number | null>(null)
+  const hydrated = useHydrated()
   // dates an admin closed to new bookings: YYYY-MM-DD -> note
   const [blockedDates, setBlockedDates] = useState<Record<string, string>>({})
 
@@ -705,7 +711,7 @@ export default function AppointmentForm() {
         </StepCard>
 
         <StepCard step="3" title="YAKAP Registration" subtitle="PhilHealth YAKAP membership status" done={stepsDone[2]}>
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200">
+          <div className={`grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200 transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
             {[
               { value: false, label: 'Not registered', hint: 'No' },
               { value: true, label: 'Registered', hint: 'Yes' },
@@ -714,6 +720,7 @@ export default function AppointmentForm() {
                 key={opt.hint}
                 type="button"
                 onClick={() => setFormData({ ...formData, yakapRegistered: opt.value })}
+                disabled={!hydrated}
                 aria-pressed={formData.yakapRegistered === opt.value}
                 className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
                   formData.yakapRegistered === opt.value
@@ -855,7 +862,7 @@ export default function AppointmentForm() {
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={isFullyBooked}
+                          disabled={!hydrated || isFullyBooked}
                           onChange={() => handleTestToggle(test)}
                           className="mt-0.5 w-4 h-4 shrink-0 accent-sky-700 disabled:cursor-not-allowed"
                         />
@@ -994,37 +1001,6 @@ export default function AppointmentForm() {
           </button>
         </div>
       </form>
-    </div>
-  )
-}
-
-function ConfirmationQRCode({ qrCodeId }: { qrCodeId: string }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const handleDownload = () => {
-    const canvas = wrapRef.current?.querySelector('canvas') as HTMLCanvasElement | undefined
-    if (canvas) {
-      const link = document.createElement('a')
-      link.download = `appointment-qr-${qrCodeId}.png`
-      link.href = canvas.toDataURL()
-      link.click()
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50 p-5">
-      <div className="p-1.5 rounded-2xl bg-gradient-to-br from-sky-800 to-cyan-600 shadow-lg shadow-sky-500/25">
-        <div ref={wrapRef} className="bg-white p-4 rounded-xl">
-          <QRCodeCanvas value={qrCodeId} size={200} level="H" />
-        </div>
-      </div>
-      <p className="text-[13px] text-slate-600 mt-3 font-medium">Show this QR code at the laboratory</p>
-      <button
-        onClick={handleDownload}
-        className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sky-800 hover:border-sky-400 hover:bg-sky-50 text-sm font-semibold transition-colors"
-      >
-        <Download className="w-4 h-4" />
-        Download QR Code
-      </button>
     </div>
   )
 }
