@@ -13,13 +13,47 @@ export const metadata: Metadata = {
   description: "City Health Office Bacolod City - Laboratory Appointment Booking System",
 };
 
-// Inline load watchdog. It runs from the HTML itself, so it still works when
-// a JS chunk fails to load (e.g. an intermittent 503) and hydration never
-// starts. If HydrationPing has not reported a hydrated page within 10 seconds,
-// it shows a small notice with a Refresh button instead of leaving the page
-// looking fine but unresponsive. Allowed by the CSP's script-src 'unsafe-inline'.
+// Inline page-health script. It runs from the HTML itself, so both parts work
+// even when a JS chunk fails to load (e.g. an intermittent 503) and hydration
+// never starts. Allowed by the CSP's script-src 'unsafe-inline'.
+//
+// 1) Chunk-failure self-heal: if a /_next/static/ script fails before
+//    hydration finished, reload the page once (sessionStorage guard prevents
+//    loops; skipped if the user already typed something). Transient 503s then
+//    recover automatically instead of leaving the page inert.
+// 2) Load watchdog: if HydrationPing has not reported a hydrated page within
+//    10 seconds, show a small notice with a Refresh button.
 const LOAD_WATCHDOG = `(function () {
   try {
+    var reloaded = false;
+    try { reloaded = sessionStorage.getItem('cho-chunk-reloaded') === '1'; } catch (e) {}
+    function hasUserInput() {
+      var els = document.querySelectorAll('input, textarea, select');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var t = (el.type || '').toLowerCase();
+        if (t === 'hidden' || t === 'button' || t === 'submit' || t === 'reset') continue;
+        if (t === 'checkbox' || t === 'radio') { if (el.checked) return true; continue; }
+        if (el.value) return true;
+      }
+      return false;
+    }
+    document.addEventListener('error', function (e) {
+      if (window.__choReady) return;
+      var t = e.target;
+      if (!t || !t.tagName || t.tagName !== 'SCRIPT') return;
+      var src = t.getAttribute && t.getAttribute('src');
+      if (!src || src.indexOf('/_next/static/') === -1) return;
+      if (reloaded) return;
+      if (hasUserInput()) return;
+      reloaded = true;
+      try { sessionStorage.setItem('cho-chunk-reloaded', '1'); } catch (err) {}
+      setTimeout(function () {
+        if (window.__choReady) return;
+        if (hasUserInput()) return;
+        location.reload();
+      }, 1500);
+    }, true);
     var t = setTimeout(function () {
       if (window.__choReady) return;
       if (document.getElementById('cho-load-notice')) return;

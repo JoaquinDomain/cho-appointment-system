@@ -82,16 +82,37 @@ sudo nano /etc/nginx/sites-available/cho
 ```
 
 ```nginx
+# Keepalive upstream: reuses TCP connections to Node. Without this every
+# request (including the ~30 parallel JS chunks a first page load requests)
+# opens a new connection; a burst can overflow the accept queue and surface
+# as intermittent 503s on /_next/static/*.js, which dead-locks hydration.
+upstream cho_app {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
 server {
     listen 80;
     server_name cho-services-appointment.bacolodcity.gov.ph;
 
+    # Serve hashed build assets straight from disk: removes ~30 proxied
+    # requests per first load from Node entirely.
+    location /_next/static/ {
+        alias /var/www/cho/.next/static/;
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
+        proxy_set_header Connection "";       # enable keepalive to upstream
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;   # required: Secure cookies
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
     }
 }
 ```
@@ -135,9 +156,20 @@ database first. See SETUP.md §5.
 
 ## 10. Updating later
 
+Do not rebuild in the live directory while it is serving — `npm run build`
+replaces `.next` mid-traffic and can leave HTML and chunks mismatched.
+Build in a staging directory, then swap:
+
 ```bash
-cd /var/www/cho && git pull && npm ci && npm run build && pm2 restart cho
+rsync -a --delete /var/www/cho/ /var/www/cho-staging/ --exclude .env.local --exclude node_modules
+cd /var/www/cho-staging && git pull && npm ci && npm run build
+sudo ln -sfn /var/www/cho-staging /var/www/cho-current   # atomic symlink swap
+# restart the app service to point at the new directory, then remove the old release
 ```
+
+If the app is managed by systemd (as on the current server), restart with
+`sudo systemctl restart cho`; the DEPLOY.md §5 commands assume pm2 — check
+`systemctl status cho` vs `pm2 list` on the server and use whichever runs it.
 
 ## Notes
 
@@ -146,3 +178,15 @@ cd /var/www/cho && git pull && npm ci && npm run build && pm2 restart cho
 - `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (local `next dev`
   convenience); production leaves it unset so `/` serves the booking form, and
   `next build` refuses to run if it is set to `admin` (build guard).
+- **Intermittent 503s on `/_next/static/*.js`** kill page interactivity (hydration
+  never completes). The app self-heals with one automatic reload and shows a
+  Refresh notice as fallback, but the delivery problem must be fixed in nginx
+  (vhost §6: keepalive upstream + static alias). Diagnose with:
+
+  ```bash
+  sudo tail -f /var/log/nginx/error.log        # "limiting requests", "no live upstreams", "connect() failed"
+  sudo nginx -T | grep -iE 'limit_conn|limit_req|keepalive'
+  for i in $(seq 20); do curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/_next/static/chunks/<runtime>.js; done
+  ```
+
+  Localhost 200s with public 503s point at nginx/limits, not the Node app.
