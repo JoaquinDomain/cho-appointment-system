@@ -28,7 +28,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
       <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mb-3">
         {title}
       </h2>
-      <div className="space-y-3 text-[15px] leading-relaxed text-justify hyphens-auto text-slate-700">{children}</div>
+      <div className="space-y-3 text-[15px] leading-relaxed text-left hyphens-none text-slate-700">{children}</div>
     </section>
   )
 }
