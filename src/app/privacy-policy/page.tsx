@@ -19,7 +19,7 @@ import { ShieldCheck, ArrowLeft } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
-    'How the Bacolod City Health Office Laboratory Appointment System collects, uses, and protects your personal information — Republic Act No. 10173.',
+    'How the Bacolod City Health Office Laboratory Appointment System collects, uses, and protects your personal information under Republic Act No. 10173.',
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -28,7 +28,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
       <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mb-3">
         {title}
       </h2>
-      <div className="space-y-3 text-[15px] leading-relaxed text-slate-700">{children}</div>
+      <div className="space-y-3 text-[15px] leading-relaxed text-justify hyphens-auto text-slate-700">{children}</div>
     </section>
   )
 }
@@ -142,7 +142,7 @@ export default function PrivacyPolicyPage() {
               laboratory visit is collected. The system records which tests you
               request; it does not store test results, diagnoses, prescriptions, or
               other medical records. Please do not put medical records or other health
-              details into the name fields &mdash; they are not designed to hold that
+              details into the name fields, because they are not designed to hold that
               kind of information.
             </p>
           </Section>
@@ -222,7 +222,7 @@ export default function PrivacyPolicyPage() {
               Records are stored in a MySQL database operated for the City Health
               Office on a server managed in coordination with the City&rsquo;s
               information technology personnel. The database is not published to the
-              internet &mdash; the website talks to it through the application only.
+              internet; the website talks to it through the application only.
               The site is served over HTTPS.
             </p>
             <p>The application applies the following safeguards, among others:</p>
@@ -246,10 +246,10 @@ export default function PrivacyPolicyPage() {
             <p>
               No Internet transmission or storage system can be guaranteed to be
               completely secure. This notice describes the safeguards implemented in
-              the application itself. It does not claim additional protections &mdash;
-              such as encryption of the database at rest or a specific
-              intrusion-prevention product &mdash; that have not been verified for
-              this service. If a personal data breach requiring
+              the application itself. It does not claim additional protections, such as
+              encryption of the database at rest or a specific intrusion-prevention
+              product, that have not been verified for this service. If a personal data
+              breach requiring
               notification occurs, the City Health Office will handle it in accordance
               with the Data Privacy Act and National Privacy Commission requirements.
             </p>
