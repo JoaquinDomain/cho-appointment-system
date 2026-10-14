@@ -453,10 +453,10 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading appointments...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand mx-auto" role="status" aria-label="Loading appointments" />
+          <p className="mt-4 text-sm text-muted">Loading appointments…</p>
         </div>
       </div>
     )
@@ -464,14 +464,14 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center p-6 bg-red-50 rounded-lg">
-          <p className="text-red-800">{error}</p>
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <div className="text-center p-6 bg-white rounded-2xl border border-line shadow-sm max-w-md">
+          <p className="text-danger font-semibold">{error}</p>
           <button
             onClick={() => {
               fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly)
             }}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="mt-4 px-5 py-2.5 bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
           >
             Retry
           </button>
@@ -481,44 +481,44 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-page p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-800 to-cyan-600 flex items-center justify-center shadow-md shadow-sky-900/20 shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-navy flex items-center justify-center shadow-md shrink-0">
               <LayoutDashboard className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">City Health Office &middot; Bacolod City</p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-0.5">Admin Dashboard</h1>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand">City Health Office &middot; Bacolod City</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy mt-0.5">Admin Dashboard</h1>
             </div>
           </div>
           <button
             onClick={() => setShowScanner(!showScanner)}
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-md active:scale-[0.98] font-semibold"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-navy text-white rounded-xl hover:bg-navy/90 transition-colors active:scale-[0.98] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2"
           >
             <Scan className="w-5 h-5 mr-2" />
             {showScanner ? 'Close Scanner' : 'Scan QR Code'}
           </button>
         </div>
 
-        {/* Stat Cards */}
+        {/* Stat Cards — clickable filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <button
             onClick={showAll}
             aria-pressed={totalActive}
             title="Show all appointments"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-sky-900 to-sky-700 text-white shadow-lg shadow-sky-900/20 ring-1 ring-sky-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${totalActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-white border transition-all cursor-pointer hover:border-brand/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${totalActive ? 'border-brand ring-2 ring-brand/25 bg-soft/40' : 'border-line shadow-sm'}`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sky-200 text-xs sm:text-sm font-medium">Total Appointments</p>
-                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.total}</p>
-                <p className="text-sky-300/80 text-[11px] mt-0.5">Across all dates</p>
+                <p className="text-muted text-xs sm:text-sm font-medium">Total Appointments</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums text-navy">{stats.total}</p>
+                <p className="text-faint text-[11px] mt-0.5">Across all dates</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
-                <Users className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-soft flex items-center justify-center">
+                <Users className="w-6 h-6 text-brand" />
               </div>
             </div>
           </button>
@@ -526,16 +526,16 @@ export default function AdminDashboard() {
             onClick={todayActive ? showAll : showToday}
             aria-pressed={todayActive}
             title="Show today's appointments"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-violet-700 to-indigo-600 text-white shadow-lg shadow-violet-900/20 ring-1 ring-violet-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${todayActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-white border transition-all cursor-pointer hover:border-brand/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${todayActive ? 'border-brand ring-2 ring-brand/25 bg-soft/40' : 'border-line shadow-sm'}`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-violet-200 text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
-                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.today}</p>
-                <p className="text-violet-300/80 text-[11px] mt-0.5">Scheduled for today</p>
+                <p className="text-muted text-xs sm:text-sm font-medium">Today&apos;s Appointments</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums text-navy">{stats.today}</p>
+                <p className="text-faint text-[11px] mt-0.5">Scheduled for today</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
-                <CalendarCheck className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-warn-surface flex items-center justify-center">
+                <CalendarCheck className="w-6 h-6 text-warn" />
               </div>
             </div>
           </button>
@@ -543,16 +543,16 @@ export default function AdminDashboard() {
             onClick={yakapActive ? showAll : showYakap}
             aria-pressed={yakapActive}
             title="Show YAKAP-registered patients"
-            className={`text-left rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-900/20 ring-1 ring-emerald-950/20 cursor-pointer transition hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${yakapActive ? 'ring-2 ring-white/70' : ''}`}
+            className={`text-left rounded-2xl p-4 sm:p-5 bg-white border transition-all cursor-pointer hover:border-brand/40 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${yakapActive ? 'border-brand ring-2 ring-brand/25 bg-soft/40' : 'border-line shadow-sm'}`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-200 text-xs sm:text-sm font-medium">YAKAP Registered</p>
-                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums">{stats.yakap}</p>
-                <p className="text-emerald-300/80 text-[11px] mt-0.5">PhilHealth YAKAP members</p>
+                <p className="text-muted text-xs sm:text-sm font-medium">YAKAP Registered</p>
+                <p className="text-2xl sm:text-3xl font-extrabold mt-1 tabular-nums text-navy">{stats.yakap}</p>
+                <p className="text-faint text-[11px] mt-0.5">PhilHealth YAKAP members</p>
               </div>
-              <div className="w-11 h-11 rounded-xl bg-white/15 border border-white/10 flex items-center justify-center">
-                <HeartHandshake className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-ok-surface flex items-center justify-center">
+                <HeartHandshake className="w-6 h-6 text-ok" />
               </div>
             </div>
           </button>
@@ -565,7 +565,7 @@ export default function AdminDashboard() {
           </div>
         )}
         {scanError && (
-          <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+          <div className="mb-6 p-3 bg-warn-surface border border-warn/30 rounded-xl text-sm text-warn" role="alert">
             {scanError}
           </div>
         )}
@@ -574,7 +574,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setShowWalkin(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-700 text-white text-sm font-semibold rounded-xl hover:bg-sky-800 active:scale-[0.98] transition"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dark active:scale-[0.98] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
           >
             <UserPlus className="w-4 h-4" />
             Add Walk-in
@@ -582,14 +582,14 @@ export default function AdminDashboard() {
           <button
             onClick={handleExportCsv}
             disabled={exporting}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-line text-ink text-sm font-semibold rounded-xl hover:bg-soft disabled:opacity-60 transition-colors"
           >
             <Download className="w-4 h-4" />
-            {exporting ? 'Exporting...' : 'Export CSV'}
+            {exporting ? 'Exporting…' : 'Export CSV'}
           </button>
           <button
             onClick={() => setShowQuotas(v => !v)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${showQuotas ? 'bg-sky-950 text-white border-sky-950' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${showQuotas ? 'bg-navy text-white border-navy' : 'bg-white border-line text-ink hover:bg-soft'}`}
             aria-expanded={showQuotas}
           >
             <BarChart3 className="w-4 h-4" />
@@ -598,7 +598,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => setShowBlockDate(true)}
             title="Close a date to new bookings"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors bg-white border-line text-ink hover:bg-soft"
           >
             <Calendar className="w-4 h-4" />
             Block Date
@@ -607,7 +607,7 @@ export default function AdminDashboard() {
             onClick={() => { setPage(1); setYakapOnly(v => !v) }}
             aria-pressed={yakapOnly}
             title="Show only YAKAP-registered patients"
-            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${yakapOnly ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl border transition-colors ${yakapOnly ? 'bg-ok text-white border-ok' : 'bg-white border-line text-ink hover:bg-soft'}`}
           >
             <HeartHandshake className="w-4 h-4" />
             YAKAP only
@@ -616,25 +616,30 @@ export default function AdminDashboard() {
 
         {/* Daily quotas */}
         {showQuotas && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-line p-4 sm:p-5 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-base font-bold text-slate-900">Online capacity by test</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Half of each test&apos;s daily slots are held for walk-ins. Bars show online slots remaining.</p>
+                <h2 className="text-base font-bold text-navy">Online capacity by test</h2>
+                <p className="text-xs text-muted mt-0.5">Half of each test&apos;s daily slots are held for walk-ins. Bars show online slots remaining.</p>
               </div>
               <div className="flex items-center gap-2">
-                <label htmlFor="quota-date" className="text-sm font-medium text-slate-700">Quota date</label>
+                <label htmlFor="quota-date" className="text-sm font-medium text-ink">Quota date</label>
                 <input
                   id="quota-date"
                   type="date"
                   value={quotaDate}
                   onChange={(e) => setQuotaDate(e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-xl text-slate-900 bg-white text-sm shadow-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none"
+                  className="px-3 py-2 border border-line rounded-xl text-ink bg-white text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
               </div>
             </div>
-            {quotaLoading && <p className="text-sm text-slate-500 mb-2 animate-pulse">Loading quotas...</p>}
-            {quotaError && <p className="text-sm text-red-700 mb-2">{quotaError}</p>}
+            {quotaLoading && (
+              <p className="flex items-center gap-2 text-sm text-muted mb-2">
+                <span className="w-3.5 h-3.5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" aria-hidden="true" />
+                Loading quotas…
+              </p>
+            )}
+            {quotaError && <p className="text-sm text-danger mb-2">{quotaError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
                 // online count excludes walkin, total includes all
@@ -650,29 +655,29 @@ export default function AdminDashboard() {
                 const pct = onlineLimit > 0 ? Math.round((onlineAvailable / onlineLimit) * 100) : 0
                 const onlineFull = onlineAvailable <= 0
                 return (
-                  <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'}`}>
+                  <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-danger/30 bg-danger-surface/60' : 'border-line bg-white'}`}>
                     <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-semibold text-slate-900 truncate" title={t.label}>{t.label}</span>
+                      <span className="font-semibold text-navy truncate" title={t.label}>{t.label}</span>
                       <span className="flex shrink-0 items-center gap-1.5">
                         {onlineFull ? (
-                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white">
+                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
                             Online Full
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums">
+                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-soft text-brand border border-brand/20 tabular-nums">
                             {onlineAvailable} online left
                           </span>
                         )}
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border tabular-nums ${heldLeft <= 0 ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border tabular-nums ${heldLeft <= 0 ? 'bg-danger-surface text-danger border-danger/30' : 'bg-ok-surface text-ok border-ok/30'}`}>
                           {heldLeft} walk-in left
                         </span>
                       </span>
                     </div>
-                    <div className="mt-1.5 text-xs text-slate-500 tabular-nums">
+                    <div className="mt-1.5 text-xs text-muted tabular-nums">
                       Total {available}/{t.limit} left.
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-red-500' : pct <= 25 ? 'bg-amber-500' : 'bg-sky-600'}`} style={{ width: `${pct}%` }} />
+                    <div className="mt-2 h-2 rounded-full bg-line/60 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-danger' : pct <= 25 ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )
@@ -682,24 +687,24 @@ export default function AdminDashboard() {
         )}
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-line p-4 sm:p-5 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-faint w-5 h-5 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search last name, first name, or appointment ID..."
                 value={searchTerm}
                 onChange={(e) => { setPage(1); setSearchTerm(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
             </div>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-faint w-5 h-5 pointer-events-none" />
               <select
                 value={facilityFilter}
                 onChange={(e) => { setPage(1); setFacilityFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none"
               >
                 <option value="">All Facilities</option>
                 {HEALTH_FACILITIES.map(facility => (
@@ -708,20 +713,20 @@ export default function AdminDashboard() {
               </select>
             </div>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-faint w-5 h-5 pointer-events-none" />
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => { setPage(1); setDateFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
             </div>
             <div className="relative">
-              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-faint w-5 h-5 pointer-events-none" />
               <select
                 value={statusFilter}
                 onChange={(e) => { setPage(1); setStatusFilter(e.target.value) }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 appearance-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none"
               >
                 <option value="">All Statuses</option>
                 {APPOINTMENT_STATUSES.map(s => (
@@ -733,65 +738,65 @@ export default function AdminDashboard() {
           {(dateFilter || statusFilter || searchTerm.trim() || facilityFilter) && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {searchTerm.trim() && (
-                <button onClick={() => { setPage(1); setSearchTerm('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200">
+                <button onClick={() => { setPage(1); setSearchTerm('') }} className="text-xs px-3 py-1.5 bg-soft text-ink rounded-full hover:bg-line/60">
                   Search &ldquo;{searchTerm.trim()}&rdquo; ✕
                 </button>
               )}
               {facilityFilter && (
-                <button onClick={() => { setPage(1); setFacilityFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 max-w-full truncate">
+                <button onClick={() => { setPage(1); setFacilityFilter('') }} className="text-xs px-3 py-1.5 bg-soft text-ink rounded-full hover:bg-line/60 max-w-full truncate">
                   {facilityFilter} ✕
                 </button>
               )}
               {dateFilter && (
-                <button onClick={() => { setPage(1); setDateFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200">
+                <button onClick={() => { setPage(1); setDateFilter('') }} className="text-xs px-3 py-1.5 bg-soft text-ink rounded-full hover:bg-line/60">
                   Date {dateFilter} ✕
                 </button>
               )}
               {statusFilter && (
-                <button onClick={() => { setPage(1); setStatusFilter('') }} className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 capitalize">
+                <button onClick={() => { setPage(1); setStatusFilter('') }} className="text-xs px-3 py-1.5 bg-soft text-ink rounded-full hover:bg-line/60 capitalize">
                   Status {statusFilter} ✕
                 </button>
               )}
               {yakapOnly && (
-                <button onClick={() => { setPage(1); setYakapOnly(false) }} className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full hover:bg-emerald-200">
+                <button onClick={() => { setPage(1); setYakapOnly(false) }} className="text-xs px-3 py-1.5 bg-ok-surface text-ok rounded-full hover:bg-ok-surface/70">
                   YAKAP only ✕
                 </button>
               )}
               <button
                 onClick={() => { setPage(1); setDateFilter(todayLocal()) }}
-                className="text-xs px-3 py-1.5 bg-sky-50 text-sky-800 font-semibold rounded-full hover:bg-sky-100"
+                className="text-xs px-3 py-1.5 bg-soft text-brand font-semibold rounded-full hover:bg-line/60"
               >
                 Today
               </button>
               <button
                 onClick={() => { setPage(1); setSearchTerm(''); setFacilityFilter(''); setDateFilter(''); setStatusFilter(''); setYakapOnly(false) }}
-                className="text-xs px-3 py-1.5 text-slate-500 hover:text-slate-800 underline underline-offset-2"
+                className="text-xs px-3 py-1.5 text-muted hover:text-ink underline underline-offset-2"
               >
                 Clear all
               </button>
             </div>
           )}
-          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-slate-600">
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted">
             <span className="tabular-nums">Showing {filteredAppointments.length} of {total} appointments (page {page})</span>
             <span className="inline-flex gap-2">
               <button
                 onClick={() => { void fetchAppointments(page, debouncedSearch, facilityFilter, dateFilter, statusFilter, yakapOnly) }}
                 disabled={loading}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
+                className="px-3 py-1.5 border border-line rounded-lg disabled:opacity-50 hover:bg-soft font-medium text-ink transition-colors"
               >
                 {loading ? 'Loading…' : 'Refresh'}
               </button>
               <button
                 onClick={() => setPage(p => Math.max(p - 1, 1))}
                 disabled={page <= 1 || loading}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
+                className="px-3 py-1.5 border border-line rounded-lg disabled:opacity-50 hover:bg-soft font-medium text-ink transition-colors"
               >
                 Prev
               </button>
               <button
                 onClick={() => setPage(p => (filteredAppointments.length === PAGE_SIZE ? p + 1 : p))}
                 disabled={filteredAppointments.length < PAGE_SIZE || loading}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg disabled:opacity-50 hover:bg-slate-50 font-medium"
+                className="px-3 py-1.5 border border-line rounded-lg disabled:opacity-50 hover:bg-soft font-medium text-ink transition-colors"
               >
                 Next
               </button>
@@ -802,28 +807,28 @@ export default function AdminDashboard() {
         {/* Appointments: cards on mobile */}
         <div className="space-y-3 md:hidden">
           {filteredAppointments.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
-              <p className="font-semibold text-slate-700">No appointments found</p>
-              <p className="text-sm text-slate-500 mt-0.5">Try adjusting your search or filters.</p>
+            <div className="bg-white rounded-2xl shadow-sm border border-line p-8 text-center">
+              <p className="font-semibold text-navy">No appointments found</p>
+              <p className="text-sm text-muted mt-0.5">Try adjusting your search or filters.</p>
             </div>
           ) : (
             filteredAppointments.map((appointment) => (
-              <div key={appointment.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+              <div key={appointment.id} className="bg-white rounded-2xl shadow-sm border border-line p-4">
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <div>
                     <button
                       onClick={() => openDetails(appointment)}
-                      className="font-semibold text-sky-800 underline underline-offset-2 decoration-sky-300 text-left"
+                      className="font-semibold text-brand underline underline-offset-2 decoration-brand/30 text-left hover:text-brand-dark"
                     >
                       {appointment.patient_name}
                     </button>
-                    <p className="text-sm text-gray-500">Age {appointment.age}{appointment.birthdate ? ` · Born ${appointment.birthdate}` : ''}{appointment.contact_number ? ` · ${appointment.contact_number}` : ''}</p>
+                    <p className="text-sm text-muted">Age {appointment.age}{appointment.birthdate ? ` · Born ${appointment.birthdate}` : ''}{appointment.contact_number ? ` · ${appointment.contact_number}` : ''}</p>
                   </div>
                   <span className="flex flex-col items-end gap-1">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       appointment.yakap_registered
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-ok-surface text-ok'
+                        : 'bg-warn-surface text-warn'
                     }`}>
                       YAKAP {appointment.yakap_registered ? 'YES' : 'NO'}
                     </span>
@@ -832,30 +837,30 @@ export default function AdminDashboard() {
                     </span>
                   </span>
                 </div>
-                <div className="space-y-1.5 text-sm text-gray-600">
+                <div className="space-y-1.5 text-sm text-muted">
                   <p className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-faint" />
                     {formatDate(appointment.appointment_date)}
                   </p>
                   <p className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <MapPin className="w-4 h-4 text-faint" />
                     {appointment.consultation_facility}
                   </p>
                   <p className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                    <Clock className="w-4 h-4 text-faint" />
                     Booked {formatDateTime(appointment.created_at)}
                   </p>
                 </div>
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">Tests</p>
+                <div className="mt-2 pt-2 border-t border-line/70">
+                  <p className="text-xs text-muted mb-1">Tests</p>
                   <div className="flex flex-wrap gap-1">
                     {appointment.selected_tests.map(test => (
-                      <span key={test} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                      <span key={test} className="px-2 py-0.5 bg-soft text-brand text-xs rounded-full font-medium">
                         {test}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs font-mono text-gray-400 break-all">{appointment.id}</p>
+                  <p className="mt-2 text-xs font-mono text-faint break-all">{appointment.id}</p>
                 </div>
               </div>
             ))
@@ -863,83 +868,83 @@ export default function AdminDashboard() {
         </div>
 
         {/* Appointments Table (desktop) */}
-        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-line overflow-hidden">
           <div className="slim-scroll overflow-auto max-h-[68vh]">
             <table className="w-full">
-              <thead className="bg-slate-100/90 backdrop-blur sticky top-0 z-[1] shadow-[0_1px_0_0_#e2e8f0]">
+              <thead className="bg-page/90 backdrop-blur sticky top-0 z-[1] shadow-[0_1px_0_0_#dce6f0]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     <User className="inline w-4 h-4 mr-1" />
                     Patient
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     Age
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider whitespace-nowrap">
                     Birthday
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider whitespace-nowrap">
                     <Calendar className="inline w-4 h-4 mr-1" />
                     Appointment Date
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     <MapPin className="inline w-4 h-4 mr-1" />
                     Facility
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     YAKAP
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     Tests
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     <Clock className="inline w-4 h-4 mr-1" />
                     Booked
                   </th>
-                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wider">
                     Appointment ID
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-line/70">
                 {filteredAppointments.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-6 py-12 text-center">
-                      <p className="font-semibold text-slate-700">No appointments found</p>
-                      <p className="text-sm text-slate-500 mt-0.5">Try adjusting your search or filters.</p>
+                      <p className="font-semibold text-navy">No appointments found</p>
+                      <p className="text-sm text-muted mt-0.5">Try adjusting your search or filters.</p>
                     </td>
                   </tr>
                 ) : (
                   filteredAppointments.map((appointment) => (
-                    <tr key={appointment.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-sky-50/70 transition-colors">
+                    <tr key={appointment.id} className="odd:bg-white even:bg-page/60 hover:bg-soft/60 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => openDetails(appointment)}
-                          className="text-sm font-semibold text-sky-800 underline underline-offset-2 decoration-sky-300 hover:text-sky-950"
+                          className="text-sm font-semibold text-brand underline underline-offset-2 decoration-brand/30 hover:text-brand-dark"
                         >
                           {appointment.patient_name}
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.age}</div>
+                        <div className="text-sm text-muted">{appointment.age}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{appointment.birthdate || '—'}</div>
+                        <div className="text-sm text-muted">{appointment.birthdate || '—'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDate(appointment.appointment_date)}</div>
+                        <div className="text-sm text-ink">{formatDate(appointment.appointment_date)}</div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm text-gray-500 max-w-[12rem] truncate" title={appointment.consultation_facility}>{appointment.consultation_facility}</div>
+                        <div className="text-sm text-muted max-w-[12rem] truncate" title={appointment.consultation_facility}>{appointment.consultation_facility}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           appointment.yakap_registered
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-ok-surface text-ok'
+                            : 'bg-warn-surface text-warn'
                         }`}>
                           {appointment.yakap_registered ? 'YES' : 'NO'}
                         </span>
@@ -950,15 +955,15 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm text-gray-500 max-w-[10rem] truncate" title={appointment.selected_tests.join(', ')}>
+                        <div className="text-sm text-muted max-w-[10rem] truncate" title={appointment.selected_tests.join(', ')}>
                           {appointment.selected_tests.join(', ')}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{formatDateTime(appointment.created_at)}</div>
+                        <div className="text-sm text-muted">{formatDateTime(appointment.created_at)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono text-gray-900" title={appointment.id}>{appointment.id.slice(0, 8)}…</div>
+                        <div className="text-sm font-mono text-ink" title={appointment.id}>{appointment.id.slice(0, 8)}…</div>
                       </td>
                     </tr>
                   ))
@@ -975,22 +980,22 @@ export default function AdminDashboard() {
             onClick={closeDetails}
           >
             <div
-              className="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/10 w-full max-w-lg max-h-[90vh] overflow-y-auto slim-scroll animate-fade-up"
+              className="bg-white rounded-2xl shadow-2xl ring-1 ring-navy/10 w-full max-w-lg max-h-[90vh] overflow-y-auto slim-scroll animate-fade-up"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100 bg-slate-50/90 backdrop-blur rounded-t-2xl sticky top-0 z-10">
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-line bg-page/90 backdrop-blur rounded-t-2xl sticky top-0 z-10">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-extrabold tracking-tight text-slate-900 break-words">{selectedAppointment.patient_name}</h2>
+                    <h2 className="text-xl font-extrabold tracking-tight text-navy break-words">{selectedAppointment.patient_name}</h2>
                     <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${STATUS_STYLES[selectedAppointment.status]}`}>
                       {selectedAppointment.status}
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-0.5">Appointment Details</p>
+                  <p className="text-sm text-muted mt-0.5">Appointment Details</p>
                 </div>
                 <button
                   onClick={closeDetails}
-                  className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  className="p-2 rounded-lg text-muted hover:bg-line/60 hover:text-ink transition-colors"
                   aria-label="Close details"
                 >
                   <X className="w-5 h-5" />
@@ -1000,62 +1005,62 @@ export default function AdminDashboard() {
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <User className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Last Name</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.last_name || '—'}</p>
+                      <p className="text-xs text-muted uppercase">Last Name</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.last_name || '—'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <User className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">First Name</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.first_name || '—'}</p>
+                      <p className="text-xs text-muted uppercase">First Name</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.first_name || '—'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <User className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Middle Name</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.middle_name || '—'}</p>
+                      <p className="text-xs text-muted uppercase">Middle Name</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.middle_name || '—'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <Calendar className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Birthday</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.birthdate ? `${selectedAppointment.birthdate} (Age ${selectedAppointment.age})` : `Age ${selectedAppointment.age}`}</p>
+                      <p className="text-xs text-muted uppercase">Birthday</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.birthdate ? `${selectedAppointment.birthdate} (Age ${selectedAppointment.age})` : `Age ${selectedAppointment.age}`}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Phone className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <Phone className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Contact Number</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.contact_number || '—'}</p>
+                      <p className="text-xs text-muted uppercase">Contact Number</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.contact_number || '—'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <Calendar className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Appointment Date</p>
-                      <p className="text-sm font-medium text-gray-900">{formatDate(selectedAppointment.appointment_date)}</p>
+                      <p className="text-xs text-muted uppercase">Appointment Date</p>
+                      <p className="text-sm font-medium text-ink">{formatDate(selectedAppointment.appointment_date)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2 sm:col-span-2">
-                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <MapPin className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Health Facility Where Consulted</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedAppointment.consultation_facility}</p>
+                      <p className="text-xs text-muted uppercase">Health Facility Where Consulted</p>
+                      <p className="text-sm font-medium text-ink">{selectedAppointment.consultation_facility}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <HeartHandshake className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <HeartHandshake className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">YAKAP Registered</p>
+                      <p className="text-xs text-muted uppercase">YAKAP Registered</p>
                       <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-medium rounded-full ${
                         selectedAppointment.yakap_registered
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-ok-surface text-ok'
+                          : 'bg-warn-surface text-warn'
                       }`}>
                         {selectedAppointment.yakap_registered ? 'YES' : 'NO'}
                       </span>
@@ -1063,29 +1068,29 @@ export default function AdminDashboard() {
                   </div>
                   {selectedAppointment.yakap_registered && selectedAppointment.yakap_facility && (
                     <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-faint mt-0.5" />
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">YAKAP Facility</p>
-                        <p className="text-sm font-medium text-gray-900">{selectedAppointment.yakap_facility}</p>
+                        <p className="text-xs text-muted uppercase">YAKAP Facility</p>
+                        <p className="text-sm font-medium text-ink">{selectedAppointment.yakap_facility}</p>
                       </div>
                     </div>
                   )}
                   <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <Clock className="w-4 h-4 text-faint mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">Booked At</p>
-                      <p className="text-sm font-medium text-gray-900">{formatDateTime(selectedAppointment.created_at)}</p>
+                      <p className="text-xs text-muted uppercase">Booked At</p>
+                      <p className="text-sm font-medium text-ink">{formatDateTime(selectedAppointment.created_at)}</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-500 uppercase mb-1.5 flex items-center gap-1">
+                  <p className="text-xs text-muted uppercase mb-1.5 flex items-center gap-1">
                     <FlaskConical className="w-3.5 h-3.5" /> Laboratory Tests
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedAppointment.selected_tests.map(test => (
-                      <span key={test} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                      <span key={test} className="px-2.5 py-1 bg-soft text-brand text-xs font-medium rounded-full">
                         {test}
                       </span>
                     ))}
@@ -1093,75 +1098,75 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-500 uppercase mb-1.5">Status</p>
+                  <p className="text-xs text-muted uppercase mb-1.5">Status</p>
                   <div className="flex flex-wrap gap-1.5">
                     {APPOINTMENT_STATUSES.map(s => (
                       <button
                         key={s}
                         onClick={() => handleStatusChange(s)}
                         disabled={updatingStatus || selectedAppointment.status === s}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-full capitalize border disabled:opacity-60 ${
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full capitalize border disabled:opacity-60 transition-colors ${
                           selectedAppointment.status === s
                             ? STATUS_STYLES[s] + ' border-transparent'
-                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                            : 'bg-white text-muted border-line hover:bg-soft'
                         }`}
                       >
                         {s}
                       </button>
                     ))}
                   </div>
-                  {updatingStatus && <p className="mt-1 text-xs text-gray-500">Updating…</p>}
+                  {updatingStatus && <p className="mt-1 text-xs text-muted">Updating…</p>}
                 </div>
 
                 {selectedAppointment.checked_in_at && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+                  <div className="p-3 bg-ok-surface border border-ok/30 rounded-xl text-sm text-ok">
                     Checked in: {formatDateTime(selectedAppointment.checked_in_at)}
                   </div>
                 )}
 
                 <div>
-                  <p className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1">
+                  <p className="text-xs text-muted uppercase mb-1 flex items-center gap-1">
                     <Hash className="w-3.5 h-3.5" /> Appointment ID
                   </p>
-                  <p className="text-sm font-mono text-gray-900 break-all">{selectedAppointment.id}</p>
+                  <p className="text-sm font-mono text-ink break-all">{selectedAppointment.id}</p>
                 </div>
 
                 {editing ? (
-                  <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                  <div className="p-4 bg-page rounded-xl space-y-3">
+                    <p className="text-sm font-semibold text-navy flex items-center gap-1.5">
                       <Pencil className="w-4 h-4" /> Edit appointment
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label className="text-sm text-gray-700">Last name
-                        <input value={editForm.last_name} onChange={(e) => setEditForm(f => ({ ...f, last_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-ink">Last name
+                        <input value={editForm.last_name} onChange={(e) => setEditForm(f => ({ ...f, last_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" />
                       </label>
-                      <label className="text-sm text-gray-700">First name
-                        <input value={editForm.first_name} onChange={(e) => setEditForm(f => ({ ...f, first_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-ink">First name
+                        <input value={editForm.first_name} onChange={(e) => setEditForm(f => ({ ...f, first_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" />
                       </label>
-                      <label className="text-sm text-gray-700">Middle name
-                        <input value={editForm.middle_name} onChange={(e) => setEditForm(f => ({ ...f, middle_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" placeholder="Optional" />
+                      <label className="text-sm text-ink">Middle name
+                        <input value={editForm.middle_name} onChange={(e) => setEditForm(f => ({ ...f, middle_name: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" placeholder="Optional" />
                       </label>
-                      <label className="text-sm text-gray-700">Birthday
-                        <input type="date" value={editForm.birthdate} onChange={(e) => setEditForm(f => ({ ...f, birthdate: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-ink">Birthday
+                        <input type="date" value={editForm.birthdate} onChange={(e) => setEditForm(f => ({ ...f, birthdate: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" />
                       </label>
-                      <label className="text-sm text-gray-700">Contact number
-                        <input type="tel" value={editForm.contact_number} onChange={(e) => setEditForm(f => ({ ...f, contact_number: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" placeholder="e.g. 0917 123 4567" />
+                      <label className="text-sm text-ink">Contact number
+                        <input type="tel" value={editForm.contact_number} onChange={(e) => setEditForm(f => ({ ...f, contact_number: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" placeholder="e.g. 0917 123 4567" />
                       </label>
-                      <label className="text-sm text-gray-700">Facility
-                        <select value={editForm.consultation_facility} onChange={(e) => setEditForm(f => ({ ...f, consultation_facility: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white">
+                      <label className="text-sm text-ink">Facility
+                        <select value={editForm.consultation_facility} onChange={(e) => setEditForm(f => ({ ...f, consultation_facility: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20">
                           {HEALTH_FACILITIES.map(f => (<option key={f} value={f}>{f}</option>))}
                         </select>
                       </label>
-                      <label className="text-sm text-gray-700">Date
-                        <input type="date" value={editForm.appointment_date} onChange={(e) => setEditForm(f => ({ ...f, appointment_date: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-900 bg-white" />
+                      <label className="text-sm text-ink">Date
+                        <input type="date" value={editForm.appointment_date} onChange={(e) => setEditForm(f => ({ ...f, appointment_date: e.target.value }))} className="mt-1 w-full px-3 py-2 border border-line rounded-xl text-ink bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20" />
                       </label>
                     </div>
-                    {editError && <p className="text-sm text-red-700">{editError}</p>}
+                    {editError && <p className="text-sm text-danger">{editError}</p>}
                     <div className="flex gap-2">
-                      <button onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-60 font-medium">
-                        {savingEdit ? 'Saving...' : 'Save changes'}
+                      <button onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-brand text-white rounded-xl hover:bg-brand-dark disabled:opacity-60 font-medium transition-colors">
+                        {savingEdit ? 'Saving…' : 'Save changes'}
                       </button>
-                      <button onClick={() => setEditing(false)} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">
+                      <button onClick={() => setEditing(false)} disabled={savingEdit} className="flex-1 px-4 py-2.5 bg-white border border-line rounded-xl hover:bg-soft font-medium transition-colors">
                         Cancel
                       </button>
                     </div>
@@ -1169,27 +1174,27 @@ export default function AdminDashboard() {
                 ) : null}
 
                 {deleteError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                  <div className="p-3 bg-danger-surface border border-danger/30 rounded-xl text-sm text-danger" role="alert">
                     {deleteError}
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 p-5 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row gap-3 p-5 border-t border-line">
                 {confirmingDelete ? (
                   <>
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-60 font-medium"
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-danger text-white rounded-xl hover:bg-danger/90 disabled:opacity-60 font-medium transition-colors"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      {deleting ? 'Deleting...' : 'Confirm Delete'}
+                      {deleting ? 'Deleting…' : 'Confirm Delete'}
                     </button>
                     <button
                       onClick={() => setConfirmingDelete(false)}
                       disabled={deleting}
-                      className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium"
+                      className="flex-1 px-4 py-2.5 bg-line/50 text-ink rounded-xl hover:bg-line font-medium transition-colors"
                     >
                       Cancel
                     </button>
@@ -1198,21 +1203,21 @@ export default function AdminDashboard() {
                   <>
                     <button
                       onClick={openEdit}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl hover:bg-blue-100 font-medium"
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-soft text-brand border border-brand/20 rounded-xl hover:bg-brand/10 font-medium transition-colors"
                     >
                       <Pencil className="w-4 h-4 mr-2" />
                       Edit
                     </button>
                     <button
                       onClick={() => setConfirmingDelete(true)}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl hover:bg-red-100 font-medium"
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-danger-surface text-danger border border-danger/20 rounded-xl hover:bg-danger/10 font-medium transition-colors"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete Record
                     </button>
                     <button
                       onClick={closeDetails}
-                      className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium"
+                      className="flex-1 px-4 py-2.5 bg-line/50 text-ink rounded-xl hover:bg-line font-medium transition-colors"
                     >
                       Close
                     </button>

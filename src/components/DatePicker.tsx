@@ -43,6 +43,7 @@ export default function DatePicker({
 }) {
   const now = new Date()
   const fallback = { y: now.getFullYear(), m0: now.getMonth() }
+  const todayISO = toISO(now.getFullYear(), now.getMonth(), now.getDate())
   const sel = value ? parseISO(value) : null
   const hydrated = useHydrated()
   const [view, setView] = useState<{ y: number; m0: number }>(
@@ -70,8 +71,8 @@ export default function DatePicker({
 
   return (
     <div>
-      <div className="flex items-center gap-2.5">
-        <span className="w-9 h-9 rounded-xl bg-soft border border-line flex items-center justify-center shrink-0">
+      <div className="flex items-center gap-3">
+        <span className="w-10 h-10 rounded-xl bg-soft border border-line flex items-center justify-center shrink-0 shadow-sm">
           <CalendarIcon className="w-5 h-5 text-brand" />
         </span>
         <div className="min-w-0">
@@ -84,7 +85,7 @@ export default function DatePicker({
         </div>
       </div>
 
-      <p className="text-sm font-bold text-navy mt-4 mb-1.5">Choose your preferred date</p>
+      <p className="text-sm font-bold text-navy mt-4 mb-2">Choose your preferred date</p>
       <div className="relative">
         <input
           type="text"
@@ -95,23 +96,23 @@ export default function DatePicker({
           onClick={() => {
             if (sel) setView({ y: sel.y, m0: sel.m0 })
           }}
-          className="w-full px-4 py-3 border border-line rounded-[11px] text-ink placeholder:text-faint bg-white outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-base cursor-default"
+          className="w-full px-4 py-3.5 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 text-base cursor-default"
         />
         <CalendarIcon className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
       </div>
 
-      <div className={`mt-3 rounded-2xl border border-line bg-white shadow-[0_1px_3px_rgba(23,43,69,0.06)] p-3 sm:p-4 transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
-        <div className="flex items-center justify-between mb-2">
+      <div className={`mt-4 rounded-2xl border border-line bg-white shadow-sm shadow-navy/5 p-3 sm:p-5 transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
           <button
             type="button"
             onClick={() => move(-1)}
             disabled={!hydrated || viewKey <= minKey}
             aria-label="Previous month"
-            className="p-1.5 rounded-lg text-ink hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-xl text-ink hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <p className="text-[15px] font-bold text-navy">
+          <p className="text-[15px] sm:text-[16px] font-bold text-navy">
             {MONTHS[view.m0]} {view.y}
           </p>
           <button
@@ -119,15 +120,15 @@ export default function DatePicker({
             onClick={() => move(1)}
             disabled={!hydrated || viewKey >= maxKey}
             aria-label="Next month"
-            className="p-1.5 rounded-lg text-ink hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-xl text-ink hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 min-[380px]:gap-1.5" role="grid" aria-label={`${MONTHS[view.m0]} ${view.y}`}>
+        <div className="grid grid-cols-7 gap-1 min-[380px]:gap-1.5 sm:gap-2" role="grid" aria-label={`${MONTHS[view.m0]} ${view.y}`}>
           {DOW.map(d => (
-            <span key={d} className="text-center text-xs font-bold text-faint py-1">
+            <span key={d} className="text-center text-[11px] sm:text-xs font-bold text-faint py-1.5">
               {d}
             </span>
           ))}
@@ -141,6 +142,7 @@ export default function DatePicker({
             const blockedDay = blockNote !== null
             const disabled = outOfRange || weekend || holiday !== null || blockedDay
             const selected = value === iso
+            const isToday = iso === todayISO
             const blockTitle = blockedDay
               ? blockNote
                 ? `Closed: ${blockNote}`
@@ -155,16 +157,16 @@ export default function DatePicker({
                 disabled={!hydrated || disabled}
                 title={blockTitle ?? holiday ?? (weekend ? 'Weekend — lab closed' : undefined)}
                 onClick={() => onChange(iso)}
-                className={`py-2 rounded-xl border text-[15px] tabular-nums transition-all ${
+                className={`py-2.5 sm:py-3 min-h-[40px] rounded-xl border text-sm sm:text-[15px] tabular-nums transition-colors ${
                   selected
-                    ? 'bg-brand border-brand text-white font-bold shadow'
+                    ? 'bg-brand border-brand text-white font-bold shadow-sm shadow-brand/30'
                     : blockedDay
                       ? 'bg-danger-surface border-danger/30 text-danger font-bold cursor-not-allowed'
                       : holiday
                         ? 'bg-warn-surface border-warn/30 text-warn font-bold cursor-not-allowed'
                         : disabled
                           ? 'bg-disabled border-line text-disabled-text cursor-not-allowed'
-                          : 'bg-white border-line text-ink hover:border-brand hover:bg-soft font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40'
+                          : `bg-white border-line text-ink hover:border-brand hover:bg-soft font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40${isToday ? ' font-bold border-brand/50' : ''}`
                 }`}
               >
                 {day}
@@ -173,7 +175,7 @@ export default function DatePicker({
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-line text-xs text-muted">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-line text-xs text-muted">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3.5 h-3.5 rounded-full bg-disabled border-line" />
             Weekend

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShieldCheck, QrCode, LayoutDashboard, LogOut } from 'lucide-react'
+import { ShieldCheck, QrCode, LayoutDashboard, LogOut, ArrowLeft } from 'lucide-react'
 import AdminDashboard from '@/components/AdminDashboard'
 import SiteQRPoster from '@/components/SiteQRPoster'
 
@@ -67,63 +67,77 @@ export default function AdminApp() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+      <div className="min-h-screen bg-gradient-to-br from-navy via-hero to-navy flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/80" role="status" aria-label="Checking session" />
       </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/25 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
-        <div className="absolute inset-0 bg-dot-grid opacity-40" />
-        <div className="relative bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full border border-white/20 animate-fade-up">
+      <div className="relative min-h-screen bg-gradient-to-br from-navy via-hero to-navy flex items-center justify-center p-4 overflow-hidden">
+        <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+        <div className="relative bg-white rounded-3xl shadow-2xl shadow-navy/30 p-6 sm:p-8 max-w-md w-full border border-line animate-fade-up">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink transition-colors mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded-md px-1 py-0.5"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Link>
           <div className="text-center mb-6">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-400/40">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-brand flex items-center justify-center mb-4 shadow-lg shadow-brand/30">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 mb-1">CHO Admin Portal</h1>
-            <p className="text-slate-500 text-sm">City Health Office &middot; Bacolod City</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-navy mb-1">CHO Admin Portal</h1>
+            <p className="text-muted text-sm">City Health Office &middot; Bacolod City</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label htmlFor="admin-email" className="block text-[13px] font-semibold text-navy mb-1.5">Email</label>
               <input
+                id="admin-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 text-base"
                 placeholder="admin@cho.gov.ph"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <label htmlFor="admin-password" className="block text-[13px] font-semibold text-navy mb-1.5">Password</label>
               <input
+                id="admin-password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 text-base"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="p-3 bg-danger-surface border border-danger/30 rounded-xl" role="alert">
+                <p className="text-sm text-danger">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all hover:shadow-lg hover:shadow-indigo-400/40 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed font-semibold"
+              className="w-full px-4 py-3.5 min-h-[48px] bg-brand text-white rounded-xl hover:bg-brand-dark transition-colors disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed font-bold text-base shadow-md shadow-brand/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                  Logging in…
+                </span>
+              ) : (
+                'Login'
+              )}
             </button>
           </form>
 
@@ -133,20 +147,20 @@ export default function AdminApp() {
               { icon: LayoutDashboard, label: 'Daily quotas' },
               { icon: ShieldCheck, label: 'Records' },
             ].map(f => (
-              <li key={f.label} className="rounded-xl bg-slate-50 border border-slate-200 px-2 py-2.5">
-                <f.icon className="w-4 h-4 mx-auto text-indigo-600" />
-                <p className="text-[11px] font-semibold text-slate-600 mt-1">{f.label}</p>
+              <li key={f.label} className="rounded-xl bg-page border border-line px-2 py-2.5">
+                <f.icon className="w-4 h-4 mx-auto text-brand" />
+                <p className="text-[11px] font-semibold text-muted mt-1">{f.label}</p>
               </li>
             ))}
           </ul>
 
-          <p className="mt-4 text-center text-xs text-slate-400">
+          <p className="mt-4 text-center text-xs text-faint">
             Authorized CHO staff only
           </p>
           <p className="mt-1.5 text-center text-xs">
             <Link
               href="/privacy-policy"
-              className="text-slate-400 hover:text-slate-600 underline-offset-2 hover:underline"
+              className="text-faint hover:text-muted underline-offset-2 hover:underline"
             >
               Privacy Policy
             </Link>
@@ -157,29 +171,29 @@ export default function AdminApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="bg-slate-950 text-white px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-md">
+    <div className="min-h-screen bg-page">
+      <div className="bg-navy text-white px-4 sm:px-6 py-3 sticky top-0 z-10 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow">
+            <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center shadow-sm">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-bold leading-tight">CHO Admin Portal</h1>
-              <p className="text-[11px] text-slate-400 leading-tight">City Health Office &middot; Bacolod City</p>
+              <p className="text-[11px] text-white/60 leading-tight">City Health Office &middot; Bacolod City</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowPoster(!showPoster)}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all hover:shadow-md hover:shadow-indigo-300/50"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             >
               {showPoster ? <LayoutDashboard className="w-4 h-4" /> : <QrCode className="w-4 h-4" />}
               {showPoster ? 'Dashboard' : 'QR Poster'}
             </button>
             <button
               onClick={handleLogout}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/20 transition-colors border border-white/10"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/20 transition-colors border border-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             >
               <LogOut className="w-4 h-4" />
               Logout

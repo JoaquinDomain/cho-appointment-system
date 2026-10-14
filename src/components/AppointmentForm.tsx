@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Search, X, Moon, ClipboardCheck, ShieldCheck, CalendarDays, FileText, House, Info } from 'lucide-react'
+import { User, MapPin, AlertCircle, CheckCircle, Check, ChevronDown, Search, SearchX, X, Moon, ClipboardCheck, ShieldCheck, CalendarDays, FileText, House, Info } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { useHydrated } from '@/lib/useHydrated'
@@ -29,15 +29,7 @@ interface FormData {
 }
 
 const FIELD_CLASS =
-  'w-full px-4 py-3 border border-line rounded-[11px] text-ink placeholder:text-faint bg-white outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-base'
-
-// decorative confetti for the confirmation header (no layout impact)
-const CONFETTI_COLORS = ['#0866C6', '#22B8D6', '#16845B', '#A65B00', '#073B5A']
-const CONFETTI: [number, number, number][] = [
-  [6, 24, 0], [20, 6, 1], [76, 10, 2], [92, 30, 3], [3, 58, 4],
-  [28, 84, 1], [70, 86, 0], [90, 64, 2], [14, 90, 3], [58, 3, 4],
-  [44, 88, 2], [84, 80, 1],
-]
+  'w-full px-4 py-3.5 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20 text-base'
 
 function ageFromBirthdate(iso: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
@@ -87,21 +79,21 @@ function StepCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="bg-white rounded-2xl border border-line shadow-[0_1px_3px_rgba(23,43,69,0.06)] overflow-hidden">
-      <div className="flex items-center gap-3 px-4 sm:px-5 pt-4 pb-3.5 border-b border-line/70">
+    <section className="bg-white rounded-2xl border border-line shadow-sm shadow-navy/5 overflow-hidden">
+      <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-line/80">
         <div
-          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-            done ? 'bg-brand text-white' : 'bg-navy text-white'
+          className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all ${
+            done ? 'bg-brand text-white shadow-sm shadow-brand/30' : 'bg-navy/10 text-navy'
           }`}
         >
-          {done ? <Check className="w-4 h-4" /> : step}
+          {done ? <Check className="w-4.5 h-4.5" aria-label="Completed" /> : step}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-[15px] font-semibold text-navy leading-tight">{title}</h2>
+          <h3 className="text-[16px] font-semibold text-navy leading-tight">{title}</h3>
           {subtitle ? <p className="text-xs text-muted truncate">{subtitle}</p> : null}
         </div>
       </div>
-      <div className="p-4 sm:p-5">{children}</div>
+      <div className="p-5 sm:p-6">{children}</div>
     </section>
   )
 }
@@ -508,31 +500,14 @@ export default function AppointmentForm() {
 
     return (
       <div className="bg-white rounded-3xl shadow-xl shadow-navy/10 border border-line overflow-hidden animate-fade-up">
-        <div className="relative overflow-hidden px-5 sm:px-8 pt-8 pb-6 text-center">
-          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-            {CONFETTI.map(([left, top, colorIndex], i) => (
-              <span
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  left: `${left}%`,
-                  top: `${top}%`,
-                  width: 8,
-                  height: 8,
-                  background: CONFETTI_COLORS[colorIndex],
-                  opacity: 0.55,
-                }}
-              />
-            ))}
+        <div className="px-6 sm:px-10 pt-8 sm:pt-10 pb-7 text-center border-b border-line bg-ok-surface/40">
+          <div className="mx-auto w-16 h-16 bg-ok rounded-full flex items-center justify-center mb-4 shadow-lg shadow-ok/25">
+            <CheckCircle className="w-8 h-8 text-white" aria-hidden="true" />
           </div>
-
-          <div className="relative mx-auto w-20 h-20 bg-ok rounded-full flex items-center justify-center mb-4 shadow-lg shadow-ok/30 animate-pulse-ring">
-            <CheckCircle className="w-11 h-11 text-white" />
-          </div>
-          <h2 className="relative text-[22px] sm:text-2xl font-extrabold text-navy tracking-tight text-balance">
+          <h2 className="text-[22px] sm:text-[26px] font-extrabold text-navy tracking-tight text-balance">
             Appointment Successfully Booked!
           </h2>
-          <p className="relative text-muted text-sm mt-1.5">Your appointment has been recorded.</p>
+          <p className="text-muted text-sm mt-1.5">Your appointment has been recorded.</p>
         </div>
 
         <div className="px-5 sm:px-8 pb-6 sm:pb-8 space-y-5">
@@ -637,17 +612,17 @@ export default function AppointmentForm() {
 
   return (
     <div className="bg-white rounded-3xl shadow-xl shadow-navy/10 border border-line overflow-hidden">
-      <div className="px-5 sm:px-7 pt-6 pb-5 border-b border-line">
+      <div className="px-6 sm:px-8 pt-7 pb-6 border-b border-line">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-[19px] sm:text-[23px] font-extrabold text-navy tracking-tight">Book a Laboratory Appointment</h1>
-            <p className="text-muted text-sm mt-1">Complete each step below to schedule your visit.</p>
+            <h2 className="text-[20px] sm:text-[24px] font-extrabold text-navy tracking-tight">Book a Laboratory Appointment</h2>
+            <p className="text-muted text-sm mt-1.5">Complete each step below to schedule your visit.</p>
           </div>
-          <span className="shrink-0 px-2.5 py-1 rounded-full bg-soft border border-line text-brand text-xs font-bold tabular-nums">
+          <span className="shrink-0 px-3 py-1.5 rounded-full bg-soft border border-line text-brand text-xs font-bold tabular-nums">
             {doneCount}/4 steps
           </span>
         </div>
-        <div className="mt-3 h-1.5 rounded-full bg-line overflow-hidden">
+        <div className="mt-4 h-2 rounded-full bg-line overflow-hidden">
           <div
             className="h-full rounded-full bg-brand transition-all duration-500"
             style={{ width: `${(doneCount / 4) * 100}%` }}
@@ -673,17 +648,14 @@ export default function AppointmentForm() {
               <label className="block text-[13px] font-semibold text-navy mb-1.5">
                 Last Name <span className="text-danger">*</span>
               </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
-                <input
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className={`${FIELD_CLASS} pl-10`}
-                  placeholder="Cruz"
-                />
-              </div>
+              <input
+                type="text"
+                required
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className={FIELD_CLASS}
+                placeholder="Cruz"
+              />
             </div>
             <div>
               <label className="block text-[13px] font-semibold text-navy mb-1.5">
@@ -700,14 +672,14 @@ export default function AppointmentForm() {
             </div>
             <div>
               <label className="block text-[13px] font-semibold text-navy mb-1.5">
-                Middle Name <span className="text-faint font-normal">(optional)</span>
+                Middle Name (optional)
               </label>
               <input
                 type="text"
                 value={formData.middleName}
                 onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
                 className={FIELD_CLASS}
-                placeholder="Dela Cruz (optional)"
+                placeholder="Dela Cruz"
               />
             </div>
             <div>
@@ -731,17 +703,14 @@ export default function AppointmentForm() {
             <label className="block text-[13px] font-semibold text-navy mb-1.5">
               Contact Number <span className="text-danger">*</span>
             </label>
-            <div className="relative">
-              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
-              <input
-                type="tel"
-                required
-                value={formData.contactNumber}
-                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-                className={`${FIELD_CLASS} pl-10`}
-                placeholder="e.g. 0917 123 4567"
-              />
-            </div>
+            <input
+              type="tel"
+              required
+              value={formData.contactNumber}
+              onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+              className={FIELD_CLASS}
+              placeholder="e.g. 0917 123 4567"
+            />
           </div>
         </StepCard>
 
@@ -767,18 +736,18 @@ export default function AppointmentForm() {
                 Health Facility Where Consulted <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
                 <select
                   required
                   value={formData.healthFacility}
                   onChange={(e) => setFormData({ ...formData, healthFacility: e.target.value })}
-                  className={`${FIELD_CLASS} pl-10 appearance-none ${formData.healthFacility ? '' : 'text-faint'}`}
+                  className={`${FIELD_CLASS} pl-4 pr-10 appearance-none ${formData.healthFacility ? '' : 'text-faint'}`}
                 >
                   <option value="">Select a health facility</option>
                   {HEALTH_FACILITIES.map(facility => (
                     <option key={facility} value={facility}>{facility}</option>
                   ))}
                 </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -796,9 +765,9 @@ export default function AppointmentForm() {
                 onClick={() => setFormData({ ...formData, yakapRegistered: opt.value })}
                 disabled={!hydrated}
                 aria-pressed={formData.yakapRegistered === opt.value}
-                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   formData.yakapRegistered === opt.value
-                    ? 'bg-white text-navy shadow-sm border border-brand'
+                    ? 'bg-white text-navy shadow-sm border border-brand/70 font-semibold'
                     : 'text-muted hover:text-ink border border-transparent'
                 }`}
               >
@@ -899,12 +868,16 @@ export default function AppointmentForm() {
             </p>
           )}
           {loadingQuotas && (
-            <p className="text-xs text-brand mb-2.5 animate-pulse">Checking test availability for selected date...</p>
+            <p className="flex items-center gap-2 text-xs text-brand mb-2.5">
+              <span className="w-3.5 h-3.5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" aria-hidden="true" />
+              Checking test availability for selected date…
+            </p>
           )}
 
           {filteredTests.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-line bg-page p-6 text-center text-sm text-muted">
-              No tests match &ldquo;{testSearch}&rdquo;.
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-page p-6 text-center">
+              <SearchX className="w-5 h-5 text-faint" aria-hidden="true" />
+              <p className="text-sm text-muted">No tests match &ldquo;{testSearch}&rdquo;.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1029,9 +1002,9 @@ export default function AppointmentForm() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-line shadow-sm p-4 sm:p-5 sm:sticky sm:bottom-4">
+        <div className="bg-white rounded-2xl border border-line shadow-md shadow-navy/5 p-5 sm:p-6 sm:sticky sm:bottom-4 z-10">
           {TURNSTILE_ENABLED && (
-            <div className="mb-3">
+            <div className="mb-4">
               <TurnstileWidget
                 onToken={t => {
                   setTurnstileToken(t)
@@ -1048,7 +1021,7 @@ export default function AppointmentForm() {
               )}
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-muted mb-3">
+          <div className="flex items-center gap-2 text-sm text-muted mb-4">
             <ClipboardCheck className="w-4 h-4 text-brand shrink-0" />
             {formData.selectedTests.length > 0 && formData.appointmentDate ? (
               <span>
@@ -1062,7 +1035,7 @@ export default function AppointmentForm() {
           <button
             type="submit"
             disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch || Boolean(closedDayReason) || Boolean(blockedDayMessage)}
-            className="w-full px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl transition-all hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed font-bold text-base"
+            className="w-full px-6 py-4 min-h-[52px] bg-brand text-white rounded-xl transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed font-bold text-base shadow-md shadow-brand/20"
           >
             {isSubmitting ? (
               <span className="inline-flex items-center gap-2">

@@ -12,7 +12,7 @@ function todayLocal(): string {
 }
 
 const INPUT =
-  'w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 bg-white shadow-sm outline-none text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+  'w-full px-3.5 py-2.5 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none text-sm transition-all focus:border-brand focus:ring-2 focus:ring-brand/20'
 
 const NOTE_MAX = 160
 
@@ -155,27 +155,27 @@ export default function BlockedDatesModal({ onClose }: { onClose: () => void }) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-950/60 p-3 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-navy/50 p-3 sm:p-6 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="inline-flex items-center gap-2 text-base font-bold text-slate-900">
-            <Calendar className="w-5 h-5 text-sky-700" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line bg-page">
+          <h2 className="inline-flex items-center gap-2 text-base font-bold text-navy">
+            <Calendar className="w-5 h-5 text-brand" />
             Block a Date
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full" aria-label="Close">
-            <X className="w-5 h-5 text-slate-500" />
+          <button onClick={onClose} className="p-2 hover:bg-line/60 rounded-full transition-colors" aria-label="Close">
+            <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
         <form onSubmit={blockDate} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             A blocked date takes no new patients: online booking and walk-in registration are both
             refused. Appointments already on that date stay as they are.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="block-date" className="block text-sm font-semibold text-slate-700 mb-1">
+              <label htmlFor="block-date" className="block text-sm font-semibold text-navy mb-1">
                 Date *
               </label>
               <input
@@ -189,7 +189,7 @@ export default function BlockedDatesModal({ onClose }: { onClose: () => void }) 
               />
             </div>
             <div>
-              <label htmlFor="block-note" className="block text-sm font-semibold text-slate-700 mb-1">
+              <label htmlFor="block-note" className="block text-sm font-semibold text-navy mb-1">
                 Reason shown to patients
               </label>
               <input
@@ -200,24 +200,29 @@ export default function BlockedDatesModal({ onClose }: { onClose: () => void }) 
                 className={INPUT}
                 placeholder="e.g. Lab closed for inventory"
               />
-              <p className="mt-1 text-[11px] text-slate-400 tabular-nums">{note.length}/{NOTE_MAX}</p>
+              <p className="mt-1 text-[11px] text-faint tabular-nums">{note.length}/{NOTE_MAX}</p>
             </div>
           </div>
 
-          {candidateLoading && <p className="text-xs text-slate-500 animate-pulse">Checking that date...</p>}
+          {candidateLoading && (
+            <p className="flex items-center gap-2 text-xs text-muted">
+              <span className="w-3.5 h-3.5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" aria-hidden="true" />
+              Checking that date…
+            </p>
+          )}
           {candidate?.blocked && (
-            <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl" role="status">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
-              <p className="text-sm text-amber-800">
+            <div className="flex gap-2 p-3 bg-warn-surface border border-warn/30 rounded-xl" role="status">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-warn" />
+              <p className="text-sm text-warn">
                 {prettyDate(candidate.date)} is already blocked
                 {candidate.note ? ` (${candidate.note})` : ''}. Blocking again just updates the reason.
               </p>
             </div>
           )}
           {candidate && !candidate.blocked && candidate.appointments > 0 && (
-            <div className="flex gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl" role="status">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-yellow-700" />
-              <p className="text-sm text-yellow-800">
+            <div className="flex gap-2 p-3 bg-warn-surface border border-warn/30 rounded-xl" role="status">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-warn" />
+              <p className="text-sm text-warn">
                 {candidate.appointments} appointment{candidate.appointments === 1 ? '' : 's'} already on{' '}
                 {prettyDate(candidate.date)}. They will not be cancelled — only new bookings are refused.
               </p>
@@ -225,41 +230,46 @@ export default function BlockedDatesModal({ onClose }: { onClose: () => void }) 
           )}
 
           {actionError && (
-            <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
-              <p className="text-sm text-red-800">{actionError}</p>
+            <div className="flex gap-2 p-3 bg-danger-surface border border-danger/30 rounded-xl" role="alert">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-danger" />
+              <p className="text-sm text-danger">{actionError}</p>
             </div>
           )}
           {notice && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl" role="status">
-              <p className="text-sm text-emerald-800">{notice}</p>
+            <div className="p-3 bg-ok-surface border border-ok/30 rounded-xl" role="status">
+              <p className="text-sm text-ok">{notice}</p>
             </div>
           )}
 
           <button
             type="submit"
             disabled={saving || candidateLoading || !date}
-            className="w-full px-6 py-3.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl hover:bg-brand-dark font-bold disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed transition-colors shadow-md shadow-brand/20"
           >
-            {saving ? 'Saving...' : candidate?.blocked ? 'Update Blocked Date' : 'Block This Date'}
+            {saving ? 'Saving…' : candidate?.blocked ? 'Update Blocked Date' : 'Block This Date'}
           </button>
 
-          <div className="pt-2 border-t border-slate-100">
-            <h3 className="text-sm font-bold text-slate-900 mb-2">Currently blocked</h3>
-            {listLoading && <p className="text-sm text-slate-500 animate-pulse">Loading...</p>}
-            {listError && <p className="text-sm text-red-700">{listError}</p>}
+          <div className="pt-2 border-t border-line">
+            <h3 className="text-sm font-bold text-navy mb-2">Currently blocked</h3>
+            {listLoading && (
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <span className="w-3.5 h-3.5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" aria-hidden="true" />
+                Loading…
+              </p>
+            )}
+            {listError && <p className="text-sm text-danger">{listError}</p>}
             {!listLoading && !listError && rows.length === 0 && (
-              <p className="text-sm text-slate-500">No dates are blocked.</p>
+              <p className="text-sm text-muted">No dates are blocked.</p>
             )}
             <ul className="space-y-2">
               {rows.map((row) => (
                 <li
                   key={row.date}
-                  className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 bg-white"
+                  className="flex items-center gap-3 p-2.5 rounded-xl border border-line bg-white"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900">{prettyDate(row.date)}</p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-sm font-semibold text-navy">{prettyDate(row.date)}</p>
+                    <p className="text-xs text-muted truncate">
                       {row.note || 'No reason given'}
                       {row.appointments > 0 &&
                         ` · ${row.appointments} appointment${row.appointments === 1 ? '' : 's'} kept`}
@@ -269,15 +279,15 @@ export default function BlockedDatesModal({ onClose }: { onClose: () => void }) 
                     type="button"
                     onClick={() => void unblock(row.date)}
                     disabled={removing === row.date}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-60 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-danger bg-danger-surface border border-danger/20 rounded-lg hover:bg-danger/10 disabled:opacity-60 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    {removing === row.date ? 'Removing...' : 'Unblock'}
+                    {removing === row.date ? 'Removing…' : 'Unblock'}
                   </button>
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-[11px] text-slate-400">
+            <p className="mt-3 text-[11px] text-faint">
               Weekends and Philippine holidays are always closed and never need to be listed here.
             </p>
           </div>

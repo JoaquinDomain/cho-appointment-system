@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, House, ShieldCheck, LockKeyhole } from 'lucide-react'
+import { Menu, X, House, ShieldCheck, LogIn } from 'lucide-react'
 
 const LINK_CLASS =
   'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[14px] font-semibold text-ink hover:bg-soft hover:text-brand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40'
@@ -13,7 +13,7 @@ export default function SiteHeader() {
 
   return (
     <div className="relative z-40 bg-white border-b border-line">
-      <div className="max-w-[800px] mx-auto px-4 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-3">
+      <div className="w-full px-4 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-3">
         <Link
           href="/"
           className="flex items-center gap-2.5 min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
@@ -76,7 +76,7 @@ export default function SiteHeader() {
               className={LINK_CLASS}
               onClick={() => setOpen(false)}
             >
-              <LockKeyhole className="w-4 h-4 text-brand" />
+              <LogIn className="w-4 h-4 text-brand" />
               CHO Staff Login
             </Link>
           </div>
