@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Search, X, Moon, ClipboardCheck, ShieldCheck } from 'lucide-react'
+import { User, MapPin, Phone, AlertCircle, CheckCircle, Check, Search, X, Moon, ClipboardCheck, ShieldCheck, CalendarDays, FileText, House, Info } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
 import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { useHydrated } from '@/lib/useHydrated'
@@ -30,6 +30,14 @@ interface FormData {
 
 const FIELD_CLASS =
   'w-full px-4 py-3 border border-line rounded-[11px] text-ink placeholder:text-faint bg-white outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-base'
+
+// decorative confetti for the confirmation header (no layout impact)
+const CONFETTI_COLORS = ['#0866C6', '#22B8D6', '#16845B', '#A65B00', '#073B5A']
+const CONFETTI: [number, number, number][] = [
+  [6, 24, 0], [20, 6, 1], [76, 10, 2], [92, 30, 3], [3, 58, 4],
+  [28, 84, 1], [70, 86, 0], [90, 64, 2], [14, 90, 3], [58, 3, 4],
+  [44, 88, 2], [84, 80, 1],
+]
 
 function ageFromBirthdate(iso: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
@@ -469,52 +477,109 @@ export default function AppointmentForm() {
   const ecgHasOtherTests = ecgSelected && formData.selectedTests.some(t => t !== ECG_LABEL)
 
   if (submitSuccess) {
+    const bookedDate = formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'
+    const arrivalNote = ecgSelected
+      ? `ECG is done 1:00–4:00 PM${ecgHasOtherTests ? '; other tests from 8:00 AM' : ''}. Please arrive on time.`
+      : 'Please arrive on time.'
+    const detailRows: {
+      icon: React.ElementType
+      label: string
+      value: string
+      sub?: string
+      mono?: boolean
+    }[] = [
+      {
+        icon: CalendarDays,
+        label: 'Appointment Date',
+        value: ecgSelected ? `${bookedDate} · 1:00–4:00 PM` : `${bookedDate} · 8:00 AM`,
+      },
+      { icon: MapPin, label: 'Facility', value: formData.healthFacility || '—' },
+      {
+        icon: User,
+        label: 'Patient',
+        value: displayName(formData.lastName, formData.firstName, formData.middleName) || '—',
+        sub:
+          ageFromBirthdate(formData.birthdate) !== null
+            ? `Age: ${ageFromBirthdate(formData.birthdate)}`
+            : '',
+      },
+      { icon: FileText, label: 'Reference No', value: qrCodeId, mono: true },
+    ]
+
     return (
       <div className="bg-white rounded-3xl shadow-xl shadow-navy/10 border border-line overflow-hidden animate-fade-up">
-        <div className="bg-hero px-5 sm:px-8 py-8 text-center text-white">
-          <div className="mx-auto w-16 h-16 bg-ok rounded-full flex items-center justify-center mb-3 animate-pulse-ring">
-            <CheckCircle className="w-9 h-9 text-white" />
+        <div className="relative overflow-hidden px-5 sm:px-8 pt-8 pb-6 text-center">
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            {CONFETTI.map(([left, top, colorIndex], i) => (
+              <span
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  width: 8,
+                  height: 8,
+                  background: CONFETTI_COLORS[colorIndex],
+                  opacity: 0.55,
+                }}
+              />
+            ))}
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight">Appointment Confirmed</h2>
-          <p className="text-white/85 text-sm mt-1">
-            {ecgSelected
-              ? `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} — ECG is done 1:00–4:00 PM${ecgHasOtherTests ? '; other tests from 8:00 AM' : ''}. Please arrive on time.`
-              : `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.`}
-          </p>
+
+          <div className="relative mx-auto w-20 h-20 bg-ok rounded-full flex items-center justify-center mb-4 shadow-lg shadow-ok/30 animate-pulse-ring">
+            <CheckCircle className="w-11 h-11 text-white" />
+          </div>
+          <h2 className="relative text-[22px] sm:text-2xl font-extrabold text-navy tracking-tight text-balance">
+            Appointment Successfully Booked!
+          </h2>
+          <p className="relative text-muted text-sm mt-1.5">Your appointment has been recorded.</p>
         </div>
 
-        <div className="p-5 sm:p-8 space-y-5">
-          <div className="rounded-2xl border border-line bg-page p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted mb-2">Booking summary</p>
-            <dl className="space-y-1.5 text-sm">
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Patient</dt>
-                <dd className="font-semibold text-ink text-right truncate min-w-0">{displayName(formData.lastName, formData.firstName, formData.middleName) || '—'}</dd>
+        <div className="px-5 sm:px-8 pb-6 sm:pb-8 space-y-5">
+          <div className="rounded-2xl border border-line bg-page p-4 sm:p-5 space-y-3.5">
+            {detailRows.map(({ icon: Icon, label, value, sub, mono }) => (
+              <div key={label} className="flex items-start gap-3">
+                <span className="w-8 h-8 rounded-lg bg-white border border-line flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-brand" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">
+                    {label}
+                  </p>
+                  <p
+                    className={`text-[14px] font-semibold text-ink break-words ${mono ? 'font-mono' : ''}`}
+                  >
+                    {value}
+                  </p>
+                  {sub ? <p className="text-[12px] text-muted mt-0.5">{sub}</p> : null}
+                </div>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Birthday</dt>
-                <dd className="font-semibold text-ink text-right">{formData.birthdate || '—'}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Tests</dt>
-                <dd className="font-semibold text-ink text-right">{formData.selectedTests.length}</dd>
-              </div>
-            </dl>
+            ))}
             {formData.selectedTests.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {formData.selectedTests.map(t => (
-                  <span key={t} className="px-2.5 py-1 bg-soft text-navy text-xs font-semibold rounded-full">
-                    {t}
-                  </span>
-                ))}
+              <div className="flex items-start gap-3">
+                <span className="w-8 h-8 rounded-lg bg-white border border-line flex items-center justify-center shrink-0">
+                  <ClipboardCheck className="w-4 h-4 text-brand" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">
+                    Laboratory Tests
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {formData.selectedTests.map(t => (
+                      <span
+                        key={t}
+                        className="px-2.5 py-1 bg-soft text-navy text-xs font-semibold rounded-full"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-soft p-4 text-center">
-            <p className="text-xs text-muted mb-1.5">Your Appointment ID</p>
-            <p className="text-sm sm:text-base font-mono font-bold text-ink break-all">{qrCodeId}</p>
-          </div>
+          <p className="text-[13px] font-semibold text-brand text-center">{arrivalNote}</p>
 
           <ConfirmationQRCode qrCodeId={qrCodeId} />
 
@@ -522,40 +587,49 @@ export default function AppointmentForm() {
             <FastingNotice selectedTests={formData.selectedTests} />
           )}
 
-          <ol className="grid sm:grid-cols-3 gap-2 text-center">
-            {['Bring a valid ID', 'Follow fasting guide', 'Show QR at the lab'].map((s, i) => (
-              <li key={s} className="rounded-xl bg-page border border-line px-3 py-2.5 text-xs font-medium text-muted">
-                <span className="block text-sm font-bold text-brand">{i + 1}</span>{s}
-              </li>
-            ))}
-          </ol>
+          <div className="flex gap-2.5 p-3.5 bg-soft border border-line rounded-2xl">
+            <Info className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+            <p className="text-[13px] leading-relaxed text-ink">
+              Please arrive on your scheduled date with a valid government-issued ID and other
+              required documents.
+            </p>
+          </div>
 
-          <button
-            onClick={() => {
-              setSubmitSuccess(false)
-              // Keep the booked date so the user immediately sees the updated
-              // availability instead of the base daily limit.
-              // Bump quotaVersion to refetch authoritative counts from server.
-              setFormData(prev => ({
-                lastName: '',
-                firstName: '',
-                middleName: '',
-                birthdate: '',
-                contactNumber: '',
-                healthFacility: '',
-                yakapRegistered: false,
-                yakapFacility: '',
-                selectedTests: [],
-                appointmentDate: prev.appointmentDate
-              }))
-              setTestSearch('')
-              setQuotaVersion(v => v + 1)
-              setQrCodeId('')
-            }}
-            className="w-full px-6 py-3.5 bg-brand text-white rounded-xl hover:bg-brand-dark transition-all font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed min-h-[48px]"
-          >
-            Book Another Appointment
-          </button>
+          <div className="space-y-2.5">
+            <Link
+              href="/"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl font-bold text-base hover:bg-brand-dark transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+            >
+              <House className="w-4 h-4" aria-hidden="true" />
+              Back to Home
+            </Link>
+            <button
+              onClick={() => {
+                setSubmitSuccess(false)
+                // Keep the booked date so the user immediately sees the updated
+                // availability instead of the base daily limit.
+                // Bump quotaVersion to refetch authoritative counts from server.
+                setFormData(prev => ({
+                  lastName: '',
+                  firstName: '',
+                  middleName: '',
+                  birthdate: '',
+                  contactNumber: '',
+                  healthFacility: '',
+                  yakapRegistered: false,
+                  yakapFacility: '',
+                  selectedTests: [],
+                  appointmentDate: prev.appointmentDate
+                }))
+                setTestSearch('')
+                setQuotaVersion(v => v + 1)
+                setQrCodeId('')
+              }}
+              className="w-full px-6 py-3.5 min-h-[46px] bg-white border border-line text-brand rounded-xl font-semibold hover:bg-soft transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+            >
+              Book Another Appointment
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -626,7 +700,7 @@ export default function AppointmentForm() {
             </div>
             <div>
               <label className="block text-[13px] font-semibold text-navy mb-1.5">
-                Middle Name
+                Middle Name <span className="text-faint font-normal">(optional)</span>
               </label>
               <input
                 type="text"

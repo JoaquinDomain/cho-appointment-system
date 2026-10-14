@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ShieldCheck, ArrowLeft } from 'lucide-react'
+import SiteHeader from '@/components/SiteHeader'
 
 // Public-facing privacy notice for /privacy-policy.
 //
@@ -36,6 +37,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-page">
+      <SiteHeader />
       <header className="relative overflow-hidden bg-gradient-to-b from-hero to-navy text-white">
         <div className="absolute inset-0 bg-dot-grid opacity-70" aria-hidden="true" />
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-8 sm:pb-10 text-center">

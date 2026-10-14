@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
-import { HeartPulse, Clock, MapPin, LockKeyhole } from 'lucide-react'
+import { HeartPulse, Clock, MapPin, LockKeyhole, CalendarDays, ArrowRight, Info } from 'lucide-react'
+import SiteHeader from '@/components/SiteHeader'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
 
@@ -11,6 +11,12 @@ import { isAdminSite } from '@/lib/appMode'
 // which breaks hydration of the date picker.
 export const dynamic = 'force-dynamic'
 
+const FEATURES = [
+  { icon: CalendarDays, label: 'Easy Booking' },
+  { icon: Clock, label: 'Shorter Waiting Time' },
+  { icon: LockKeyhole, label: 'Secure and Private' },
+]
+
 export default function Home() {
   if (isAdminSite) {
     redirect('/admin')
@@ -18,34 +24,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-page text-ink">
-      <div className="bg-white border-b border-line">
-        <div className="max-w-[800px] mx-auto px-4 sm:px-6 h-16 sm:h-[72px] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Image
-              src="/cho-logo.png"
-              alt=""
-              aria-hidden="true"
-              width={44}
-              height={44}
-              className="w-9 sm:w-11 h-auto shrink-0"
-            />
-            <div className="min-w-0 leading-tight">
-              <p className="text-[13px] sm:text-[15px] font-bold text-navy truncate">
-                City Health Office
-              </p>
-              <p className="text-[11px] sm:text-xs text-muted">Bacolod City</p>
-            </div>
-          </div>
-          <Link
-            href="/admin"
-            className="shrink-0 inline-flex items-center gap-1.5 text-[12px] sm:text-[13px] font-semibold text-brand hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 rounded-lg px-2 sm:px-3 py-2 transition-colors"
-            title="CHO staff login"
-          >
-            <LockKeyhole className="w-3.5 h-3.5" />
-            Staff login
-          </Link>
-        </div>
-      </div>
+      <SiteHeader />
 
       <header className="relative overflow-hidden bg-gradient-to-b from-hero to-navy text-white">
         <div className="absolute inset-0 bg-dot-grid opacity-70" aria-hidden="true" />
@@ -54,17 +33,17 @@ export default function Home() {
           aria-hidden="true"
         />
 
-        <div className="relative max-w-[800px] mx-auto px-5 sm:px-6 pt-7 sm:pt-10 pb-16 sm:pb-20 text-center">
-          <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur border border-white/25 flex items-center justify-center mb-3.5 sm:mb-4 shadow-lg">
+        <div className="relative max-w-[800px] mx-auto px-5 sm:px-6 pt-8 sm:pt-12 pb-20 sm:pb-24 text-left">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur border border-white/25 flex items-center justify-center mb-4 shadow-lg">
             <HeartPulse className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
-          <h1 className="text-[28px] sm:text-[36px] lg:text-[44px] font-extrabold leading-[1.15] tracking-tight text-balance drop-shadow-sm">
+          <h1 className="text-[28px] sm:text-[36px] lg:text-[44px] font-extrabold leading-[1.12] tracking-tight text-balance drop-shadow-sm">
             CHO Laboratory Appointment System
           </h1>
-          <p className="mt-3 sm:mt-4 text-[14px] sm:text-base text-white/85 text-pretty">
-            Book your laboratory appointment online.
+          <p className="mt-3 sm:mt-4 text-[14px] sm:text-base text-white/85 max-w-xl text-pretty">
+            Book your laboratory visit online quickly and easily.
           </p>
-          <div className="mt-4 sm:mt-5 flex justify-center">
+          <div className="mt-4 sm:mt-5">
             <span className="inline-flex items-center gap-1.5 text-[12px] sm:text-[13px] font-medium bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2">
               <Clock className="w-4 h-4 text-white/85" /> Lab opens 8:00 AM
             </span>
@@ -72,8 +51,37 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-[800px] mx-auto px-4 sm:px-6 -mt-7 sm:-mt-9 pb-10">
-        <div className="animate-fade-up">
+      <main className="relative z-10 max-w-[800px] mx-auto px-4 sm:px-6 -mt-8 sm:-mt-10 pb-10">
+        <section className="bg-white rounded-3xl border border-line shadow-xl shadow-navy/10 p-5 sm:p-6">
+          <ul className="grid grid-cols-3 gap-2 sm:gap-4">
+            {FEATURES.map(({ icon: Icon, label }) => (
+              <li key={label} className="flex flex-col items-center text-center gap-2">
+                <span className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-soft border border-line flex items-center justify-center">
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-brand" aria-hidden="true" />
+                </span>
+                <span className="text-[11px] sm:text-[13px] font-semibold text-navy leading-tight">
+                  {label}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <a
+            href="#book"
+            className="mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl font-bold text-base hover:bg-brand-dark transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+          >
+            Book an Appointment
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </a>
+        </section>
+
+        <div className="mt-4 flex gap-2.5 p-3.5 bg-soft border border-line rounded-2xl">
+          <Info className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+          <p className="text-[13px] leading-relaxed text-ink">
+            For laboratory services, please arrive on your scheduled date and time.
+          </p>
+        </div>
+
+        <div id="book" className="mt-5 scroll-mt-4 animate-fade-up">
           <AppointmentForm />
         </div>
       </main>
