@@ -187,14 +187,14 @@ export default function TurnstileWidget({
       <div ref={mountRef} className="flex justify-center w-full min-h-[65px]" />
       {failed && (
         <div className="text-center">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             Verification didn&apos;t load. Check your connection, or open this page in
             Chrome/Safari instead of an in-app browser.
           </p>
           <button
             type="button"
             onClick={retry}
-            className="mt-1.5 px-4 py-1.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 text-sm font-semibold hover:bg-sky-100 transition-colors"
+            className="mt-1.5 px-4 py-1.5 rounded-lg bg-soft border border-line text-brand text-sm font-semibold hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             Try again
           </button>

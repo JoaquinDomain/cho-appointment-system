@@ -25,22 +25,21 @@ export const metadata: Metadata = {
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="scroll-mt-24">
-      <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mb-3">
+      <h2 className="text-lg sm:text-xl font-bold text-navy tracking-tight mb-3">
         {title}
       </h2>
-      <div className="space-y-3 text-[15px] leading-relaxed text-left hyphens-none text-slate-700">{children}</div>
+      <div className="space-y-3 text-[15px] leading-relaxed text-left hyphens-none text-ink">{children}</div>
     </section>
   )
 }
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="relative overflow-hidden bg-gradient-to-br from-sky-950 via-sky-800 to-cyan-700 text-white">
-        <div className="absolute inset-0 bg-dot-grid" />
-        <div className="absolute -top-24 -left-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-page">
+      <header className="relative overflow-hidden bg-gradient-to-b from-hero to-navy text-white">
+        <div className="absolute inset-0 bg-dot-grid opacity-70" aria-hidden="true" />
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-8 sm:pb-10 text-center">
-          <p className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200 bg-white/10 border border-white/15 rounded-full px-3.5 py-1.5">
+          <p className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-white/85 bg-white/10 border border-white/15 rounded-full px-3.5 py-1.5">
             City Health Office &middot; Bacolod City
           </p>
           <div className="mx-auto w-14 h-14 rounded-2xl bg-white/15 backdrop-blur border border-white/20 flex items-center justify-center mt-5 mb-4 shadow-xl">
@@ -49,11 +48,11 @@ export default function PrivacyPolicyPage() {
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm">
             Privacy Policy
           </h1>
-          <p className="mt-3 text-sm sm:text-base text-cyan-50/90 max-w-xl mx-auto">
+          <p className="mt-3 text-sm sm:text-base text-white/85 max-w-xl mx-auto">
             CHO Laboratory Appointment System &middot; Republic Act No. 10173,
             the Data Privacy Act of 2012
           </p>
-          <p className="mt-4 text-xs text-cyan-100/80">
+          <p className="mt-4 text-xs text-white/70">
             Effective{' '}
             <time dateTime="2026-09-13">September 13, 2026</time>
             {' '}&middot;{' '}Last updated <time dateTime="2026-10-14">October 14, 2026</time>
@@ -62,7 +61,7 @@ export default function PrivacyPolicyPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
-        <div className="mt-6 bg-white rounded-3xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-5 sm:p-8 space-y-9">
+        <div className="mt-6 bg-white rounded-3xl border border-line shadow-[0_1px_3px_rgba(23,43,69,0.06)] p-5 sm:p-8 space-y-9">
           <Section id="purpose" title="1. Purpose of this system">
             <p>
               The Bacolod City Health Office (CHO) Laboratory Appointment System lets
@@ -121,7 +120,7 @@ export default function PrivacyPolicyPage() {
               rate limiting, abuse prevention, and human verification; it is not
               written into your appointment record.
             </p>
-            <p className="text-slate-600">
+            <p className="text-muted">
               The system does <span className="font-semibold">not</span> collect an
               e-mail address, home address, barangay, civil status, government or
               PhilHealth ID number, medical records, or the results of any laboratory
@@ -342,7 +341,7 @@ export default function PrivacyPolicyPage() {
               applicable National Privacy Commission and data-subject notification
               requirements.
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted">
               Please do not include patient details in public bug reports, ordinary
               chat messages, or unsecured screenshots.
             </p>
@@ -368,7 +367,7 @@ export default function PrivacyPolicyPage() {
                 href="https://privacy.gov.ph"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sky-700 font-semibold underline underline-offset-2 hover:text-sky-900"
+                className="text-brand font-semibold underline underline-offset-2 hover:text-brand-dark"
               >
                 privacy.gov.ph
               </a>
@@ -377,7 +376,7 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <Section id="contact" title="13. Contact details and complaints">
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-ink">
               Personal Information Controller
             </p>
             <p>
@@ -385,7 +384,7 @@ export default function PrivacyPolicyPage() {
               <br />
               Bacolod Government Center, Negros Occidental, Philippines
             </p>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-ink">
               Responsible service office
             </p>
             <p>
@@ -393,23 +392,23 @@ export default function PrivacyPolicyPage() {
               <br />
               Bacolod City, Negros Occidental, Philippines
               <br />
-              Telephone: <a href="tel:+63344313673" className="text-sky-700 font-semibold underline underline-offset-2 hover:text-sky-900">+63 34 431 3673</a>
+              Telephone: <a href="tel:+63344313673" className="text-brand font-semibold underline underline-offset-2 hover:text-brand-dark">+63 34 431 3673</a>
             </p>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-ink">
               Data Protection Officer
             </p>
             <p>
               The City Government of Bacolod publishes the following privacy contact on
               its website:
               <br />
-              <span className="font-semibold text-slate-900">Atty. Karol Joseph Chiu</span>
+              <span className="font-semibold text-ink">Atty. Karol Joseph Chiu</span>
               <br />
               Data Protection Officer, City Government of Bacolod
               <br />
               E-mail:{' '}
               <a
                 href="mailto:dataprotectionofficer@bacolodcity.gov.ph"
-                className="text-sky-700 font-semibold underline underline-offset-2 hover:text-sky-900 break-all"
+                className="text-brand font-semibold underline underline-offset-2 hover:text-brand-dark break-all"
               >
                 dataprotectionofficer@bacolodcity.gov.ph
               </a>
@@ -422,7 +421,7 @@ export default function PrivacyPolicyPage() {
                 href="https://privacy.gov.ph"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sky-700 font-semibold underline underline-offset-2 hover:text-sky-900"
+                className="text-brand font-semibold underline underline-offset-2 hover:text-brand-dark"
               >
                 privacy.gov.ph
               </a>
@@ -446,7 +445,7 @@ export default function PrivacyPolicyPage() {
               This policy takes effect on{' '}
               <time dateTime="2026-09-13">September 13, 2026</time>.
             </p>
-            <p className="text-sm text-slate-500 italic">
+            <p className="text-sm text-muted italic">
               Note: publishing this policy supports transparency under Republic Act
               No. 10173. It does not, by itself, certify that every requirement of the
               Act and its implementing rules has been fully complied with; that
@@ -455,10 +454,10 @@ export default function PrivacyPolicyPage() {
             </p>
           </Section>
 
-          <div className="pt-2 border-t border-slate-100">
+          <div className="pt-2 border-t border-line">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-700 hover:text-sky-900 underline-offset-2 hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-dark underline-offset-2 hover:underline"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to appointment booking

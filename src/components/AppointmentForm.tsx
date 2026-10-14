@@ -29,7 +29,7 @@ interface FormData {
 }
 
 const FIELD_CLASS =
-  'w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 bg-white shadow-sm outline-none transition focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+  'w-full px-4 py-3 border border-line rounded-[11px] text-ink placeholder:text-faint bg-white outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-base'
 
 function ageFromBirthdate(iso: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
@@ -79,21 +79,21 @@ function StepCard({
   children: React.ReactNode
 }) {
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-hidden">
-      <div className="flex items-center gap-3 px-5 pt-4 pb-3.5 border-b border-slate-100">
+    <section className="bg-white rounded-2xl border border-line shadow-[0_1px_3px_rgba(23,43,69,0.06)] overflow-hidden">
+      <div className="flex items-center gap-3 px-4 sm:px-5 pt-4 pb-3.5 border-b border-line/70">
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-            done ? 'bg-sky-600 text-white' : 'bg-sky-950 text-white'
+            done ? 'bg-brand text-white' : 'bg-navy text-white'
           }`}
         >
           {done ? <Check className="w-4 h-4" /> : step}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-[13px] font-bold text-slate-900 uppercase tracking-wider">{title}</h2>
-          {subtitle ? <p className="text-xs text-slate-500 truncate">{subtitle}</p> : null}
+          <h2 className="text-[15px] font-semibold text-navy leading-tight">{title}</h2>
+          {subtitle ? <p className="text-xs text-muted truncate">{subtitle}</p> : null}
         </div>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   )
 }
@@ -110,7 +110,7 @@ function FastingGuide({
   comebackSub: string
 }) {
   return (
-    <div className="text-sm text-red-900">
+    <div className="text-sm text-warn">
       <p className="flex items-center gap-1.5 font-bold uppercase tracking-wide">
         <AlertCircle className="w-4 h-4 shrink-0" />
         {title}
@@ -118,19 +118,19 @@ function FastingGuide({
       <ol className="mt-3 space-y-2">
         {rows.map(r => (
           <li key={r.time} className="flex items-center gap-2.5">
-            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-bold tabular-nums">
+            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-warn text-white text-xs font-bold tabular-nums">
               {r.time}
             </span>
             <span className="font-medium">{r.desc}</span>
           </li>
         ))}
       </ol>
-      <div className="mt-3 rounded-xl bg-red-600/10 border border-red-200 px-3 py-2.5">
+      <div className="mt-3 rounded-xl bg-warn-surface border border-warn/30 px-3 py-2.5">
         <p className="font-bold">ABSOLUTELY NOTHING AFTERWARDS</p>
-        <p className="italic text-red-800">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
+        <p className="italic text-warn">(WALA GID IMNUN OR KAUNON PAGKATAPOS)</p>
       </div>
       <p className="mt-3 font-bold">{comeback}</p>
-      <p className="italic text-red-800">({comebackSub})</p>
+      <p className="italic text-warn">({comebackSub})</p>
     </div>
   )
 }
@@ -177,15 +177,15 @@ function FastingNotice({ selectedTests }: { selectedTests: string[] }) {
     )
   } else {
     body = (
-      <p className="text-sm text-red-900 font-medium">
+      <p className="text-sm text-warn font-medium">
         <AlertCircle className="inline w-4 h-4 mr-1" />
         10–12 Hours Fasting is required prior to your test.
       </p>
     )
   }
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 shadow-sm">
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-red-500 mb-2">
+    <div className="rounded-2xl border border-warn/30 bg-warn-surface p-4 sm:p-5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-warn mb-2">
         Fasting instructions. Please read carefully
       </p>
       {body}
@@ -470,40 +470,40 @@ export default function AppointmentForm() {
 
   if (submitSuccess) {
     return (
-      <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden animate-fade-up">
-        <div className="bg-gradient-to-br from-sky-800 to-cyan-600 px-6 sm:px-8 py-8 text-center text-white">
-          <div className="mx-auto w-16 h-16 bg-white/20 border border-white/30 rounded-full flex items-center justify-center mb-3 animate-pulse-ring">
+      <div className="bg-white rounded-3xl shadow-xl shadow-navy/10 border border-line overflow-hidden animate-fade-up">
+        <div className="bg-hero px-5 sm:px-8 py-8 text-center text-white">
+          <div className="mx-auto w-16 h-16 bg-ok rounded-full flex items-center justify-center mb-3 animate-pulse-ring">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight">Appointment Confirmed</h2>
-          <p className="text-sky-50 text-sm mt-1">
+          <p className="text-white/85 text-sm mt-1">
             {ecgSelected
               ? `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} — ECG is done 1:00–4:00 PM${ecgHasOtherTests ? '; other tests from 8:00 AM' : ''}. Please arrive on time.`
               : `${formData.appointmentDate ? prettyDate(formData.appointmentDate) : 'Your chosen date'} at 8:00 AM. Please arrive on time.`}
           </p>
         </div>
 
-        <div className="p-6 sm:p-8 space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 mb-2">Booking summary</p>
+        <div className="p-5 sm:p-8 space-y-5">
+          <div className="rounded-2xl border border-line bg-page p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted mb-2">Booking summary</p>
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Patient</dt>
-                <dd className="font-semibold text-slate-900 text-right truncate">{displayName(formData.lastName, formData.firstName, formData.middleName) || '—'}</dd>
+                <dt className="text-muted">Patient</dt>
+                <dd className="font-semibold text-ink text-right truncate min-w-0">{displayName(formData.lastName, formData.firstName, formData.middleName) || '—'}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Birthday</dt>
-                <dd className="font-semibold text-slate-900 text-right">{formData.birthdate || '—'}</dd>
+                <dt className="text-muted">Birthday</dt>
+                <dd className="font-semibold text-ink text-right">{formData.birthdate || '—'}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-slate-500">Tests</dt>
-                <dd className="font-semibold text-slate-900 text-right">{formData.selectedTests.length}</dd>
+                <dt className="text-muted">Tests</dt>
+                <dd className="font-semibold text-ink text-right">{formData.selectedTests.length}</dd>
               </div>
             </dl>
             {formData.selectedTests.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {formData.selectedTests.map(t => (
-                  <span key={t} className="px-2.5 py-1 bg-sky-100 text-sky-800 text-xs font-semibold rounded-full">
+                  <span key={t} className="px-2.5 py-1 bg-soft text-navy text-xs font-semibold rounded-full">
                     {t}
                   </span>
                 ))}
@@ -511,9 +511,9 @@ export default function AppointmentForm() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-cyan-50 p-4 text-center">
-            <p className="text-xs text-slate-500 mb-1.5">Your Appointment ID</p>
-            <p className="text-sm sm:text-base font-mono font-bold text-slate-900 break-all">{qrCodeId}</p>
+          <div className="rounded-2xl border border-line bg-soft p-4 text-center">
+            <p className="text-xs text-muted mb-1.5">Your Appointment ID</p>
+            <p className="text-sm sm:text-base font-mono font-bold text-ink break-all">{qrCodeId}</p>
           </div>
 
           <ConfirmationQRCode qrCodeId={qrCodeId} />
@@ -524,8 +524,8 @@ export default function AppointmentForm() {
 
           <ol className="grid sm:grid-cols-3 gap-2 text-center">
             {['Bring a valid ID', 'Follow fasting guide', 'Show QR at the lab'].map((s, i) => (
-              <li key={s} className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600">
-                <span className="block text-sm font-bold text-sky-700">{i + 1}</span>{s}
+              <li key={s} className="rounded-xl bg-page border border-line px-3 py-2.5 text-xs font-medium text-muted">
+                <span className="block text-sm font-bold text-brand">{i + 1}</span>{s}
               </li>
             ))}
           </ol>
@@ -552,7 +552,7 @@ export default function AppointmentForm() {
               setQuotaVersion(v => v + 1)
               setQrCodeId('')
             }}
-            className="w-full px-6 py-3.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 transition-all hover:shadow-lg font-semibold"
+            className="w-full px-6 py-3.5 bg-brand text-white rounded-xl hover:bg-brand-dark transition-all font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed min-h-[48px]"
           >
             Book Another Appointment
           </button>
@@ -562,26 +562,26 @@ export default function AppointmentForm() {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl shadow-sky-900/10 border border-slate-200 overflow-hidden">
-      <div className="px-5 sm:px-7 pt-6 pb-5 border-b border-slate-100">
+    <div className="bg-white rounded-3xl shadow-xl shadow-navy/10 border border-line overflow-hidden">
+      <div className="px-5 sm:px-7 pt-6 pb-5 border-b border-line">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Book a Laboratory Appointment</h1>
-            <p className="text-slate-500 text-sm mt-1">Complete each step below to schedule your visit.</p>
+            <h1 className="text-[19px] sm:text-[23px] font-extrabold text-navy tracking-tight">Book a Laboratory Appointment</h1>
+            <p className="text-muted text-sm mt-1">Complete each step below to schedule your visit.</p>
           </div>
-          <span className="shrink-0 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold tabular-nums">
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-soft border border-line text-brand text-xs font-bold tabular-nums">
             {doneCount}/4 steps
           </span>
         </div>
-        <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+        <div className="mt-3 h-1.5 rounded-full bg-line overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-600 to-cyan-500 transition-all duration-500"
+            className="h-full rounded-full bg-brand transition-all duration-500"
             style={{ width: `${(doneCount / 4) * 100}%` }}
           />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-slate-50/60">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-page">
         {/* Honeypot anti-bot field: invisible to humans, bots fill it in. */}
         <input
           type="text"
@@ -596,11 +596,11 @@ export default function AppointmentForm() {
         <StepCard step="1" title="Patient Information" done={stepsDone[0]}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Last Name <span className="text-red-500">*</span>
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
+                Last Name <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
                 <input
                   type="text"
                   required
@@ -612,8 +612,8 @@ export default function AppointmentForm() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                First Name <span className="text-red-500">*</span>
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
+                First Name <span className="text-danger">*</span>
               </label>
               <input
                 type="text"
@@ -625,7 +625,7 @@ export default function AppointmentForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
                 Middle Name
               </label>
               <input
@@ -637,8 +637,8 @@ export default function AppointmentForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Birthday <span className="text-red-500">*</span>
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
+                Birthday <span className="text-danger">*</span>
               </label>
               <input
                 type="date"
@@ -649,16 +649,16 @@ export default function AppointmentForm() {
                 className={FIELD_CLASS}
               />
               {formData.birthdate && ageFromBirthdate(formData.birthdate) !== null && (
-                <p className="mt-1 text-xs text-slate-500">Age: {ageFromBirthdate(formData.birthdate)} years old</p>
+                <p className="mt-1 text-xs text-muted">Age: {ageFromBirthdate(formData.birthdate)} years old</p>
               )}
             </div>
           </div>
           <div className="mt-4">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-              Contact Number <span className="text-red-500">*</span>
+            <label className="block text-[13px] font-semibold text-navy mb-1.5">
+              Contact Number <span className="text-danger">*</span>
             </label>
             <div className="relative">
-              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
               <input
                 type="tel"
                 required
@@ -682,23 +682,23 @@ export default function AppointmentForm() {
                 blocked={blockedDates}
               />
               {closedDayReason && (
-                <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
+                <p className="mt-1.5 text-xs font-semibold text-danger">{closedDayReason}</p>
               )}
               {blockedDayMessage && (
-                <p className="mt-1.5 text-xs font-semibold text-red-700">{blockedDayMessage}</p>
+                <p className="mt-1.5 text-xs font-semibold text-danger">{blockedDayMessage}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Health Facility Where Consulted <span className="text-red-500">*</span>
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
+                Health Facility Where Consulted <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
                 <select
                   required
                   value={formData.healthFacility}
                   onChange={(e) => setFormData({ ...formData, healthFacility: e.target.value })}
-                  className={`${FIELD_CLASS} pl-10 appearance-none ${formData.healthFacility ? '' : 'text-slate-400'}`}
+                  className={`${FIELD_CLASS} pl-10 appearance-none ${formData.healthFacility ? '' : 'text-faint'}`}
                 >
                   <option value="">Select a health facility</option>
                   {HEALTH_FACILITIES.map(facility => (
@@ -711,7 +711,7 @@ export default function AppointmentForm() {
         </StepCard>
 
         <StepCard step="3" title="YAKAP Registration" subtitle="PhilHealth YAKAP membership status" done={stepsDone[2]}>
-          <div className={`grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-100 border border-slate-200 transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
+          <div className={`grid grid-cols-2 gap-2 p-1 rounded-2xl bg-soft border border-line transition-opacity ${hydrated ? '' : 'opacity-60'}`}>
             {[
               { value: false, label: 'Not registered', hint: 'No' },
               { value: true, label: 'Registered', hint: 'Yes' },
@@ -722,10 +722,10 @@ export default function AppointmentForm() {
                 onClick={() => setFormData({ ...formData, yakapRegistered: opt.value })}
                 disabled={!hydrated}
                 aria-pressed={formData.yakapRegistered === opt.value}
-                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
                   formData.yakapRegistered === opt.value
-                    ? 'bg-white text-sky-900 shadow border border-slate-200'
-                    : 'text-slate-500 hover:text-slate-700 border border-transparent'
+                    ? 'bg-white text-navy shadow-sm border border-brand'
+                    : 'text-muted hover:text-ink border border-transparent'
                 }`}
               >
                 {opt.hint}
@@ -735,9 +735,9 @@ export default function AppointmentForm() {
           </div>
 
           {!formData.yakapRegistered && (
-            <div className="mt-3 flex gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
-              <p className="text-[13px] leading-relaxed text-amber-900">
+            <div className="mt-3 flex gap-2.5 p-3.5 bg-warn-surface border border-warn/30 rounded-xl">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-warn" />
+              <p className="text-[13px] leading-relaxed text-warn">
                 YAKAP verification may be done at CHO. Charges or cost may be applied for non-CHO YAKAP registered patients.
               </p>
             </div>
@@ -745,14 +745,14 @@ export default function AppointmentForm() {
 
           {formData.yakapRegistered && (
             <div className="mt-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                YAKAP Facility <span className="text-red-500">*</span>
+              <label className="block text-[13px] font-semibold text-navy mb-1.5">
+                YAKAP Facility <span className="text-danger">*</span>
               </label>
               <select
                 required
                 value={formData.yakapFacility}
                 onChange={(e) => setFormData({ ...formData, yakapFacility: e.target.value })}
-                className={`${FIELD_CLASS} ${formData.yakapFacility ? '' : 'text-slate-400'}`}
+                className={`${FIELD_CLASS} ${formData.yakapFacility ? '' : 'text-faint'}`}
               >
                 <option value="">Select YAKAP facility</option>
                 {HEALTH_FACILITIES.map(facility => (
@@ -769,7 +769,7 @@ export default function AppointmentForm() {
           done={stepsDone[3]}
         >
           <div className="relative mb-3">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
             <input
               type="search"
               value={testSearch}
@@ -782,7 +782,7 @@ export default function AppointmentForm() {
               <button
                 type="button"
                 onClick={() => setTestSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-faint hover:bg-soft hover:text-brand"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -791,7 +791,7 @@ export default function AppointmentForm() {
           </div>
 
           <div className="flex items-center justify-between mb-2.5">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted min-w-0">
               {formData.appointmentDate
                 ? `Online slots for ${prettyDate(formData.appointmentDate)}. If a test is fully booked, please select another day.`
                 : 'Select a date above to see live slot availability.'}
@@ -800,36 +800,36 @@ export default function AppointmentForm() {
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, selectedTests: [] }))}
-                className="shrink-0 ml-2 text-xs font-semibold text-sky-700 hover:text-sky-900 hover:underline underline-offset-2"
+                className="shrink-0 ml-2 text-xs font-semibold text-brand hover:text-brand-dark hover:underline underline-offset-2"
               >
                 Clear
               </button>
             )}
           </div>
           {ecgDayMismatch && (
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-danger bg-danger-surface border border-danger/30 rounded-xl px-3 py-2 mb-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               ECG is available on Wednesdays only (1:00–4:00 PM). Please choose a Wednesday.
             </p>
           )}
           {closedDayReason && (
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-danger bg-danger-surface border border-danger/30 rounded-xl px-3 py-2 mb-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {closedDayReason}
             </p>
           )}
           {blockedDayMessage && (
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2.5">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-danger bg-danger-surface border border-danger/30 rounded-xl px-3 py-2 mb-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {blockedDayMessage}
             </p>
           )}
           {loadingQuotas && (
-            <p className="text-xs text-sky-600 mb-2.5 animate-pulse">Checking test availability for selected date...</p>
+            <p className="text-xs text-brand mb-2.5 animate-pulse">Checking test availability for selected date...</p>
           )}
 
           {filteredTests.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-dashed border-line bg-page p-6 text-center text-sm text-muted">
               No tests match &ldquo;{testSearch}&rdquo;.
             </div>
           ) : (
@@ -851,10 +851,10 @@ export default function AppointmentForm() {
                     key={test}
                     className={`group flex flex-col gap-2 p-3.5 rounded-xl border-2 transition-all ${
                       isFullyBooked
-                        ? 'border-slate-200 bg-slate-100/70 cursor-not-allowed opacity-70'
+                        ? 'border-line bg-disabled cursor-not-allowed opacity-80'
                         : checked
-                        ? 'border-sky-600 bg-sky-50/70 shadow-sm cursor-pointer'
-                        : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50/40 cursor-pointer'
+                        ? 'border-brand bg-soft shadow-sm cursor-pointer'
+                        : 'border-line bg-white hover:border-brand/60 hover:bg-soft/60 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -864,40 +864,40 @@ export default function AppointmentForm() {
                           checked={checked}
                           disabled={!hydrated || isFullyBooked}
                           onChange={() => handleTestToggle(test)}
-                          className="mt-0.5 w-4 h-4 shrink-0 accent-sky-700 disabled:cursor-not-allowed"
+                          className="mt-0.5 w-4 h-4 shrink-0 accent-brand disabled:cursor-not-allowed"
                         />
                         <div className="flex flex-col min-w-0">
-                          <span className={`text-sm truncate ${isFullyBooked ? 'text-slate-400 line-through' : checked ? 'text-sky-950 font-semibold' : 'text-slate-700'}`}>
+                          <span className={`text-sm truncate ${isFullyBooked ? 'text-disabled-text line-through' : checked ? 'text-navy font-semibold' : 'text-ink'}`}>
                             {test}
                           </span>
-                          <span className="text-[11px] text-slate-500 tabular-nums">
+                          <span className="text-[11px] text-muted tabular-nums">
                             {hasQuotaData
                               ? `${availableCount} of ${limit} online slots left`
                               : `Up to ${limit} online per day`}
                           </span>
                           {test === ECG_LABEL && (
-                            <span className="text-[11px] font-semibold text-sky-700">
+                            <span className="text-[11px] font-semibold text-brand">
                               Wednesdays 1–4 PM only
                             </span>
                           )}
                         </div>
                       </div>
                       {config.requiresFasting ? (
-                        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wide" title="Fasting required">
+                        <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-warn-surface border border-warn/30 text-warn text-[10px] font-bold uppercase tracking-wide" title="Fasting required">
                           <Moon className="w-3 h-3" /> Fasting
                         </span>
                       ) : null}
                     </div>
                     {hasQuotaData && !isFullyBooked && (
-                      <div className="h-1.5 rounded-full bg-slate-200/80 overflow-hidden" aria-hidden="true">
+                      <div className="h-1.5 rounded-full bg-line/80 overflow-hidden" aria-hidden="true">
                         <div
-                          className={`h-full rounded-full ${pct <= 20 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-500' : 'bg-sky-600'}`}
+                          className={`h-full rounded-full ${pct <= 20 ? 'bg-danger' : pct <= 50 ? 'bg-warn' : 'bg-brand'}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
                     )}
                     {isFullyBooked && (
-                      <span className="self-start px-2 py-0.5 text-[11px] font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
+                      <span className="self-start px-2 py-0.5 text-[11px] font-bold rounded-full bg-danger-surface text-danger border border-danger/30">
                         Fully booked: pick another day
                       </span>
                     )}
@@ -914,7 +914,7 @@ export default function AppointmentForm() {
                   key={t}
                   type="button"
                   onClick={() => handleTestToggle(t)}
-                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-sky-950 text-white text-xs font-medium rounded-full hover:bg-sky-900"
+                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-navy text-white text-xs font-medium rounded-full hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
                   title={`Remove ${t}`}
                 >
                   {t}
@@ -932,15 +932,15 @@ export default function AppointmentForm() {
         {/* Privacy notice: transparency under RA 10173. This is a notice, not a
             consent checkbox — the City Health Office processes booking data to
             deliver the requested public health service. */}
-        <div className="flex gap-2.5 p-3.5 bg-sky-50 border border-sky-200 rounded-2xl">
-          <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-sky-700" />
-          <p className="text-[13px] leading-relaxed text-slate-700">
+        <div className="flex gap-2.5 p-3.5 bg-soft border border-line rounded-2xl">
+          <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-brand" />
+          <p className="text-[13px] leading-relaxed text-ink">
             Your information is used only to schedule and prepare your laboratory
             visit, and is handled in accordance with Republic Act No. 10173 (Data
             Privacy Act of 2012).{' '}
             <Link
               href="/privacy-policy"
-              className="font-semibold text-sky-800 underline underline-offset-2 hover:text-sky-900"
+              className="font-semibold text-brand underline underline-offset-2 hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 rounded"
             >
               Read the Privacy Policy
             </Link>
@@ -949,13 +949,13 @@ export default function AppointmentForm() {
         </div>
 
         {submitError && (
-          <div className="flex gap-2.5 p-4 bg-red-50 border border-red-200 rounded-2xl" role="alert">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
-            <p className="text-sm text-red-800 leading-relaxed">{submitError}</p>
+          <div className="flex gap-2.5 p-4 bg-danger-surface border border-danger/30 rounded-2xl" role="alert">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-danger" />
+            <p className="text-sm text-danger leading-relaxed">{submitError}</p>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 sm:sticky sm:bottom-4">
+        <div className="bg-white rounded-2xl border border-line shadow-sm p-4 sm:p-5 sm:sticky sm:bottom-4">
           {TURNSTILE_ENABLED && (
             <div className="mb-3">
               <TurnstileWidget
@@ -967,19 +967,19 @@ export default function AppointmentForm() {
                 onUnavailable={() => setTurnstileUnavailable(true)}
               />
               {turnstileUnavailable && !turnstileToken && (
-                <p className="mt-2 text-center text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <p className="mt-2 text-center text-xs text-warn bg-warn-surface border border-warn/30 rounded-lg px-3 py-2">
                   Verification service unreachable on your connection — you can
                   still submit; extra checks apply.
                 </p>
               )}
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
-            <ClipboardCheck className="w-4 h-4 text-sky-700 shrink-0" />
+          <div className="flex items-center gap-2 text-sm text-muted mb-3">
+            <ClipboardCheck className="w-4 h-4 text-brand shrink-0" />
             {formData.selectedTests.length > 0 && formData.appointmentDate ? (
               <span>
-                <strong className="text-slate-900">{formData.selectedTests.length} test{formData.selectedTests.length > 1 ? 's' : ''}</strong>
-                {' '}on <strong className="text-slate-900">{prettyDate(formData.appointmentDate)}</strong>
+                <strong className="text-ink">{formData.selectedTests.length} test{formData.selectedTests.length > 1 ? 's' : ''}</strong>
+                {' '}on <strong className="text-ink">{prettyDate(formData.appointmentDate)}</strong>
               </span>
             ) : (
               <span>Select a date and at least one test to continue.</span>
@@ -988,7 +988,7 @@ export default function AppointmentForm() {
           <button
             type="submit"
             disabled={isSubmitting || formData.selectedTests.length === 0 || ecgDayMismatch || Boolean(closedDayReason) || Boolean(blockedDayMessage)}
-            className="w-full px-6 py-4 bg-gradient-to-r from-sky-800 to-cyan-600 text-white rounded-xl hover:from-sky-900 hover:to-cyan-700 transition-all hover:shadow-xl hover:shadow-sky-500/25 hover:-translate-y-0.5 disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none font-bold text-base shadow-lg"
+            className="w-full px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl transition-all hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed font-bold text-base"
           >
             {isSubmitting ? (
               <span className="inline-flex items-center gap-2">
