@@ -797,7 +797,9 @@ async function main() {
   )
   add('booking 429 carries a Retry-After header', Boolean(bookRetryAfter), `retry-after=${bookRetryAfter}`)
 
-  // privacy policy page: public, no login, cites RA 10173, keeps placeholders
+  // privacy policy page: public, no login, cites RA 10173, and reads as a
+  // finished policy — no internal [PLACEHOLDER]/[CONFIRM] review markers and
+  // no coloured review chips left in the patient-facing UI.
   res = await fetch(`${BASE}/privacy-policy`, { headers: { 'X-Forwarded-For': '203.0.113.34' } })
   const privacyHtml = await res.text().catch(() => '')
   add(
@@ -806,8 +808,15 @@ async function main() {
     `status=${res.status}`
   )
   add(
-    'privacy page cites RA 10173 and keeps review placeholders visible',
-    /10173/.test(privacyHtml) && /PLACEHOLDER/.test(privacyHtml),
+    'privacy page cites RA 10173 and carries no internal review markers',
+    /10173/.test(privacyHtml) &&
+      !/\[(?:PLACEHOLDER|CONFIRM)/.test(privacyHtml) &&
+      !/border-amber-300|border-sky-300/.test(privacyHtml),
+    ''
+  )
+  add(
+    'privacy page shows the CHO telephone and the September 13, 2026 effectivity date',
+    /\+63 34 431 3673/.test(privacyHtml) && /September 13, 2026/.test(privacyHtml),
     ''
   )
 

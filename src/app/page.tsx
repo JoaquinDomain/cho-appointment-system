@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { HeartPulse, Clock, MapPin, LockKeyhole } from 'lucide-react'
+import { HeartPulse, MapPin, Info } from 'lucide-react'
+import SiteHeader from '@/components/SiteHeader'
 import AppointmentForm from '@/components/AppointmentForm'
 import { isAdminSite } from '@/lib/appMode'
 
@@ -16,61 +16,43 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="relative overflow-hidden bg-gradient-to-br from-sky-950 via-sky-800 to-cyan-700 text-white">
-        <div className="absolute inset-0 bg-dot-grid" />
-        <div className="absolute -top-24 -left-24 w-72 h-72 bg-cyan-400/25 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -right-16 w-80 h-80 bg-blue-500/25 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-page text-ink">
+      <SiteHeader />
 
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-10 sm:pb-12 text-center">
-          <p className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200 bg-white/10 border border-white/15 rounded-full px-3.5 py-1.5">
-            City Health Office &middot; Bacolod City
-          </p>
-          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-white/15 backdrop-blur border border-white/20 flex items-center justify-center mt-5 mb-4 shadow-xl animate-float">
-            <HeartPulse className="w-8 h-8 sm:w-10 sm:h-10" />
+      <header className="relative overflow-hidden bg-gradient-to-br from-hero via-hero-teal to-accent text-white">
+        <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+        <div
+          className="absolute inset-x-0 bottom-0 h-[140px] sm:h-[180px] bg-skyline pointer-events-none"
+          aria-hidden="true"
+        />
+
+        <div className="relative max-w-[800px] mx-auto px-5 sm:px-6 pt-10 sm:pt-14 pb-12 sm:pb-16 text-center">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-2xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center mb-5 shadow-lg shadow-navy/10">
+            <HeartPulse className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-2 drop-shadow-sm text-balance">
-            CHO Laboratory{' '}
-            <span className="bg-gradient-to-r from-cyan-200 to-white bg-clip-text text-transparent">
-              Appointment System
-            </span>
+          <h1 className="text-[28px] sm:text-[36px] lg:text-[42px] font-extrabold leading-[1.12] tracking-tight text-balance drop-shadow-lg">
+            CHO Laboratory Appointment System
           </h1>
-          <div className="mt-6 flex justify-center items-center text-xs sm:text-sm">
-            <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur border border-white/20 rounded-full px-4 py-2 shadow">
-              <Clock className="w-4 h-4 text-cyan-200" /> Lab opens 8:00 AM
-            </span>
-          </div>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 -mt-5 pb-12">
-        <div className="animate-fade-up">
+      <main className="relative z-10 max-w-[800px] mx-auto px-4 sm:px-6 pb-12 pt-6">
+        <div className="flex gap-3 p-4 bg-white border border-line rounded-2xl shadow-sm shadow-navy/5">
+          <Info className="w-5 h-5 mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+          <p className="text-[14px] leading-relaxed text-ink">
+            For laboratory services, please arrive on your scheduled date and time.
+          </p>
+        </div>
+
+        <div className="mt-6 animate-fade-up">
           <AppointmentForm />
         </div>
       </main>
 
-      <footer className="pb-10 text-center">
-        <p className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-          <MapPin className="w-3.5 h-3.5" />
-          City Health Office &middot; Bacolod City &middot; Laboratory opens 8:00 AM
-        </p>
-        <p className="mt-3">
-          <Link
-            href="/privacy-policy"
-            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            Privacy Policy
-          </Link>
-        </p>
-        <p className="mt-2">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
-            title="CHO staff login"
-          >
-            <LockKeyhole className="w-3 h-3" />
-            CHO Staff Login
-          </Link>
+      <footer className="max-w-[800px] mx-auto px-4 sm:px-6 pb-10 pt-6 border-t border-line text-center">
+        <p className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+          <MapPin className="w-4 h-4 shrink-0" />
+          City Health Office &middot; Bacolod City
         </p>
       </footer>
     </div>

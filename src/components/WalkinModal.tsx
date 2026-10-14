@@ -13,7 +13,7 @@ function todayLocal(): string {
 }
 
 const INPUT =
-  'w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 bg-white shadow-sm outline-none text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500'
+  'w-full px-3.5 py-2.5 border border-line rounded-xl text-ink placeholder:text-faint bg-white outline-none text-sm transition-all focus:border-brand focus:ring-2 focus:ring-brand/20'
 
 export default function WalkinModal({
   onClose,
@@ -91,26 +91,26 @@ export default function WalkinModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-950/60 p-3 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-navy/50 p-3 sm:p-6 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="inline-flex items-center gap-2 text-base font-bold text-slate-900">
-            <UserPlus className="w-5 h-5 text-sky-700" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line bg-page">
+          <h2 className="inline-flex items-center gap-2 text-base font-bold text-navy">
+            <UserPlus className="w-5 h-5 text-brand" />
             Register Walk-in Patient
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full" aria-label="Close">
-            <X className="w-5 h-5 text-slate-500" />
+          <button onClick={onClose} className="p-2 hover:bg-line/60 rounded-full transition-colors" aria-label="Close">
+            <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
         {createdId ? (
           <div className="p-6 text-center">
-            <p className="text-lg font-bold text-slate-900">Walk-in registered</p>
-            <p className="text-sm text-slate-500 mt-1">Appointment ID</p>
-            <p className="font-mono font-bold text-slate-900 break-all mt-1">{createdId}</p>
+            <p className="text-lg font-bold text-navy">Walk-in registered</p>
+            <p className="text-sm text-muted mt-1">Appointment ID</p>
+            <p className="font-mono font-bold text-ink break-all mt-1">{createdId}</p>
             <button
               onClick={onClose}
-              className="mt-5 px-6 py-2.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 font-semibold"
+              className="mt-5 px-6 py-2.5 bg-brand text-white rounded-xl hover:bg-brand-dark font-semibold transition-colors"
             >
               Done
             </button>
@@ -119,24 +119,24 @@ export default function WalkinModal({
           <form onSubmit={submit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Last Name *</label>
+                <label className="block text-sm font-semibold text-navy mb-1">Last Name *</label>
                 <input required value={lastName} onChange={e => setLastName(e.target.value)} className={INPUT} placeholder="Cruz" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">First Name *</label>
+                <label className="block text-sm font-semibold text-navy mb-1">First Name *</label>
                 <input required value={firstName} onChange={e => setFirstName(e.target.value)} className={INPUT} placeholder="Juan" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Middle Name</label>
+                <label className="block text-sm font-semibold text-navy mb-1">Middle Name</label>
                 <input value={middleName} onChange={e => setMiddleName(e.target.value)} className={INPUT} placeholder="Optional" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Birthday *</label>
+                <label className="block text-sm font-semibold text-navy mb-1">Birthday *</label>
                 <input required type="date" value={birthdate} max={todayLocal()} onChange={e => setBirthdate(e.target.value)} className={INPUT} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Consultation Facility *</label>
-                <select required value={facility} onChange={e => setFacility(e.target.value)} className={`${INPUT} ${facility ? '' : 'text-slate-400'}`}>
+                <label className="block text-sm font-semibold text-navy mb-1">Consultation Facility *</label>
+                <select required value={facility} onChange={e => setFacility(e.target.value)} className={`${INPUT} ${facility ? '' : 'text-faint'}`}>
                   <option value="">Select facility</option>
                   {HEALTH_FACILITIES.map(f => (
                     <option key={f} value={f}>{f}</option>
@@ -144,24 +144,24 @@ export default function WalkinModal({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Date *</label>
+                <label className="block text-sm font-semibold text-navy mb-1">Date *</label>
                 <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={INPUT} />
                 {closedDayReason && (
-                  <p className="mt-1.5 text-xs font-semibold text-red-700">{closedDayReason}</p>
+                  <p className="mt-1.5 text-xs font-semibold text-danger">{closedDayReason}</p>
                 )}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Contact Number *</label>
+              <label className="block text-sm font-semibold text-navy mb-1">Contact Number *</label>
               <input required type="tel" value={contactNumber} onChange={e => setContactNumber(e.target.value)} className={INPUT} placeholder="e.g. 0917 123 4567" />
             </div>
 
             <div className="flex items-center gap-2">
-              <input id="walkin-yakap" type="checkbox" checked={yakap} onChange={e => setYakap(e.target.checked)} className="w-4 h-4 accent-sky-700" />
-              <label htmlFor="walkin-yakap" className="text-sm font-medium text-slate-700">YAKAP registered</label>
+              <input id="walkin-yakap" type="checkbox" checked={yakap} onChange={e => setYakap(e.target.checked)} className="w-4 h-4 accent-brand" />
+              <label htmlFor="walkin-yakap" className="text-sm font-medium text-ink">YAKAP registered</label>
             </div>
             {yakap && (
-              <select required value={yakapFacility} onChange={e => setYakapFacility(e.target.value)} className={`${INPUT} ${yakapFacility ? '' : 'text-slate-400'}`}>
+              <select required value={yakapFacility} onChange={e => setYakapFacility(e.target.value)} className={`${INPUT} ${yakapFacility ? '' : 'text-faint'}`}>
                 <option value="">Select YAKAP facility</option>
                 {HEALTH_FACILITIES.map(f => (
                   <option key={f} value={f}>{f}</option>
@@ -170,38 +170,38 @@ export default function WalkinModal({
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Tests * ({tests.length} selected)</label>
+              <label className="block text-sm font-semibold text-navy mb-1">Tests * ({tests.length} selected)</label>
               <input type="search" value={search} onChange={e => setSearch(e.target.value)} className={INPUT} placeholder="Search tests..." aria-label="Search tests" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2 max-h-56 overflow-y-auto border border-slate-200 rounded-xl p-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2 max-h-56 overflow-y-auto border border-line rounded-xl p-2">
                 {filtered.map(c => {
                   const blocked = isOnlineOnly(c.label)
                   return (
-                  <label key={c.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-slate-700 ${blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sky-50 cursor-pointer'}`}>
-                    <input type="checkbox" checked={tests.includes(c.label)} disabled={blocked} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-sky-700 disabled:cursor-not-allowed" />
+                  <label key={c.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-ink ${blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft cursor-pointer'}`}>
+                    <input type="checkbox" checked={tests.includes(c.label)} disabled={blocked} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-brand disabled:cursor-not-allowed" />
                     <span className="truncate">{c.label}</span>
-                    <span className="ml-auto text-[11px] text-slate-400 tabular-nums">{blocked ? 'online only' : `cap ${c.limit}`}</span>
+                    <span className="ml-auto text-[11px] text-faint tabular-nums">{blocked ? 'online only' : `cap ${c.limit}`}</span>
                   </label>
                   )
                 })}
-                {filtered.length === 0 && <p className="text-sm text-slate-400 p-2">No tests match.</p>}
+                {filtered.length === 0 && <p className="text-sm text-muted p-2">No tests match.</p>}
               </div>
             </div>
 
             {error && (
-              <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-red-600" />
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="flex gap-2 p-3 bg-danger-surface border border-danger/30 rounded-xl" role="alert">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-danger" />
+                <p className="text-sm text-danger">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={submitting || tests.length === 0 || Boolean(closedDayReason)}
-              className="w-full px-6 py-3.5 bg-sky-950 text-white rounded-xl hover:bg-sky-900 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-6 py-3.5 min-h-[48px] bg-brand text-white rounded-xl hover:bg-brand-dark font-bold disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed transition-colors shadow-md shadow-brand/20"
             >
-              {submitting ? 'Registering...' : 'Register Walk-in (Confirmed)'}
+              {submitting ? 'Registering…' : 'Register Walk-in (Confirmed)'}
             </button>
-            <p className="text-[11px] text-slate-400 text-center">Walk-ins use the held-back half of daily capacity and are marked Confirmed.</p>
+            <p className="text-[11px] text-faint text-center">Walk-ins use the held-back half of daily capacity and are marked Confirmed.</p>
           </form>
         )}
       </div>
