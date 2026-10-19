@@ -146,7 +146,7 @@ Two kinds — `.env.example` explains each key:
   - `NEXT_PUBLIC_APP_MODE`: leave **unset** for production (build fails if set
     to `admin`; only for `next dev` convenience)
   - `NEXT_PUBLIC_PATIENT_SITE_URL`: official patient booking URL for the QR
-    poster (production must be the `https://cho-services-appointment.bacolodcity.gov.ph`
+    poster (production must be the `https://cho-laboratory-services-appointment.bacolodcity.gov.ph`
     domain; `*.vercel.app` is refused at render time)
   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: Turnstile widget key
 - **Runtime (server-only, no rebuild needed)**:

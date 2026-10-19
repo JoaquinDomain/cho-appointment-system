@@ -1,4 +1,4 @@
-# Production Deployment — cho-services-appointment.bacolodcity.gov.ph
+# Production Deployment — cho-laboratory-services-appointment.bacolodcity.gov.ph
 
 Deploys the **single combined site**: public booking at `/` plus staff login at
 `/admin` (footer link "CHO Staff Login"), both talking to the production MySQL.
@@ -47,7 +47,7 @@ MYSQL_USER=<from MIT>
 MYSQL_PASSWORD=<from MIT>
 # NEXT_PUBLIC_APP_MODE: leave UNSET — single site (booking at /, staff at /admin).
 # `next build` FAILS if this is set to 'admin' (build guard in next.config.ts).
-NEXT_PUBLIC_PATIENT_SITE_URL=https://cho-services-appointment.bacolodcity.gov.ph/
+NEXT_PUBLIC_PATIENT_SITE_URL=https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
                             # build-time; QR poster target (https only, *.vercel.app refused)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=<key>
 TURNSTILE_SECRET_KEY=<key>    # booking fails closed without it
@@ -93,7 +93,7 @@ upstream cho_app {
 
 server {
     listen 80;
-    server_name cho-services-appointment.bacolodcity.gov.ph;
+    server_name cho-laboratory-services-appointment.bacolodcity.gov.ph;
 
     # Serve hashed build assets straight from disk: removes ~30 proxied
     # requests per first load from Node entirely.
@@ -120,7 +120,7 @@ server {
 ```bash
 sudo ln -s /etc/nginx/sites-available/cho /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d cho-services-appointment.bacolodcity.gov.ph
+sudo certbot --nginx -d cho-laboratory-services-appointment.bacolodcity.gov.ph
 ```
 
 `X-Forwarded-Proto` is mandatory — without it admin session cookies never get
@@ -130,8 +130,8 @@ the `Secure` flag in production.
 
 ```bash
 node scripts/check-database.mjs
-curl -sI https://cho-services-appointment.bacolodcity.gov.ph/ | head -5
-curl -s https://cho-services-appointment.bacolodcity.gov.ph/api/quotas
+curl -sI https://cho-laboratory-services-appointment.bacolodcity.gov.ph/ | head -5
+curl -s https://cho-laboratory-services-appointment.bacolodcity.gov.ph/api/quotas
 ```
 
 - [ ] Booking page loads over HTTPS

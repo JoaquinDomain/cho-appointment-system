@@ -18,7 +18,7 @@ function check(name, actual, expected) {
   }
 }
 
-const PROD = 'https://cho-services-appointment.bacolodcity.gov.ph/'
+const PROD = 'https://cho-laboratory-services-appointment.bacolodcity.gov.ph/'
 const OLD_VERCEL = 'https://cho-appointment-system.vercel.app/'
 
 // 1. valid production env URL wins
