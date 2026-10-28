@@ -8,6 +8,7 @@ Pre-deploy gate (run locally, all must pass):
 ```bash
 npx tsc --noEmit && npm run lint   # static checks
 npm run build                      # production build (refuses APP_MODE=admin)
+npm run test:calendar              # first-load date selection in a real browser (needs Chrome/Edge)
 node security-tests/patient-url-test.mjs   # QR URL resolver (13 checks)
 node security-tests/build-guard-test.mjs   # build guard (4 checks)
 node security-tests/mysql-e2e.mjs  # 81 checks (self-contained, throwaway MySQL)
@@ -123,10 +124,27 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d cho-laboratory-services-appointment.bacolodcity.gov.ph
 ```
 
+Use the same release path in the alias that the Node service actually runs
+from. If you deploy via the `/var/www/cho-current` symlink in §10, change the
+alias to `/var/www/cho-current/.next/static/` (and the service
+`WorkingDirectory`) so nginx serves the assets of the release that is live.
+
 `X-Forwarded-Proto` is mandatory — without it admin session cookies never get
 the `Secure` flag in production.
 
 ## 7. Verify
+
+Run the read-only deployment check **after every deploy and nginx change**. It
+loads the page in a headless browser, fails on any 4xx/5xx `/_next/static`
+request, waits for React hydration, and clicks an enabled calendar date:
+
+```bash
+npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
+```
+
+Never treat a deploy as complete while this check fails. A page where every
+calendar date is greyed out and the "taking longer than usual" notice appears is
+a hydration failure caused by missing JavaScript chunks, not a calendar bug.
 
 ```bash
 node scripts/check-database.mjs
@@ -135,6 +153,7 @@ curl -s https://cho-laboratory-services-appointment.bacolodcity.gov.ph/api/quota
 ```
 
 - [ ] Booking page loads over HTTPS
+- [ ] `npm run verify:deploy -- https://...` passes
 - [ ] Test appointment books and appears in the DB
 - [ ] Security headers present (`curl -sI ... | grep -i content-security`)
 - [ ] Footer link "CHO Staff Login" opens `/admin` and login works
@@ -161,32 +180,42 @@ replaces `.next` mid-traffic and can leave HTML and chunks mismatched.
 Build in a staging directory, then swap:
 
 ```bash
+# 1. Confirm what is actually live before touching anything
+cd /var/www/cho && git rev-parse --short HEAD
+
+# 2. Build the new release in a staging directory
 rsync -a --delete /var/www/cho/ /var/www/cho-staging/ --exclude .env.local --exclude node_modules
 cd /var/www/cho-staging && git pull && npm ci && npm run build
-sudo ln -sfn /var/www/cho-staging /var/www/cho-current   # atomic symlink swap
-# restart the app service to point at the new directory, then remove the old release
+
+# 3. Swap the symlink the app service uses, restart, and verify
+sudo ln -sfn /var/www/cho-staging /var/www/cho-current
+sudo systemctl restart cho          # or: pm2 restart cho
+npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
 ```
 
 If the app is managed by systemd (as on the current server), restart with
 `sudo systemctl restart cho`; the DEPLOY.md §5 commands assume pm2 — check
 `systemctl status cho` vs `pm2 list` on the server and use whichever runs it.
+Do not consider the update finished until `verify:deploy` passes and
+`git rev-parse --short HEAD` on the server matches the commit that was built.
 
 ## Notes
 
 - Never commit `.env.local`; rotate the MySQL password if it ever appears in chat/logs.
-- The domain currently serves a placeholder "HELLO" page — the vhost above replaces it.
 - `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (local `next dev`
   convenience); production leaves it unset so `/` serves the booking form, and
   `next build` refuses to run if it is set to `admin` (build guard).
-- **Intermittent 503s on `/_next/static/*.js`** kill page interactivity (hydration
-  never completes). The app self-heals with one automatic reload and shows a
-  Refresh notice as fallback, but the delivery problem must be fixed in nginx
-  (vhost §6: keepalive upstream + static alias). Diagnose with:
+- **Intermittent 503s on `/_next/static/*.js`** kill page interactivity: React
+  never hydrates, so every calendar date stays disabled even though the form
+  looks rendered. A refresh works because the failed chunks are fetched again
+  and succeed. The app shows a Refresh notice as a fallback, but the delivery
+  problem must be fixed in nginx (vhost §6: keepalive upstream + static alias).
+  Diagnose with:
 
   ```bash
   sudo tail -f /var/log/nginx/error.log        # "limiting requests", "no live upstreams", "connect() failed"
   sudo nginx -T | grep -iE 'limit_conn|limit_req|keepalive'
-  for i in $(seq 20); do curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/_next/static/chunks/<runtime>.js; done
+  npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
   ```
 
   Localhost 200s with public 503s point at nginx/limits, not the Node app.
