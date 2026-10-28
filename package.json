@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:calendar": "node tests/calendar-first-load.mjs",
+    "verify:deploy": "node scripts/verify-site.mjs"
   },
   "dependencies": {
     "html5-qrcode": "^2.3.8",
