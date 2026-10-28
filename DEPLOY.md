@@ -1,41 +1,74 @@
 # Production Deployment — cho-laboratory-services-appointment.bacolodcity.gov.ph
 
-Deploys the **single combined site**: public booking at `/` plus staff login at
-`/admin` (footer link "CHO Staff Login"), both talking to the production MySQL.
+Deploys the combined public booking site at `/` and staff area at `/admin`
+against the production MySQL database.
 
-Pre-deploy gate (run locally, all must pass):
+Production environment (managed by MITCS):
+
+- Rocky Linux 9.6
+- Application directory: `/var/www/cho-services-appointment.bacolodcity.gov.ph`
+- systemd service: `cho-services-appointment.service`
+- Next.js listens on `127.0.0.1:3000`
+- Nginx and TLS: MITCS-managed
+- MySQL 8.0 database: `bcho_lab_appointment`
+
+Do not modify Nginx, the systemd unit, the service `WorkingDirectory`, or
+restart production until MITCS has inspected the existing configuration and
+approved the change. The automated checks below are local unless explicitly
+identified as production checks; they do not prove production infrastructure is
+healthy.
+
+## Pre-deploy gate (local)
 
 ```bash
 npx tsc --noEmit && npm run lint   # static checks
 npm run build                      # production build (refuses APP_MODE=admin)
-npm run test:calendar              # first-load date selection in a real browser (needs Chrome/Edge)
+npm run test:calendar              # headless browser test; stubs date/quota APIs and does not submit a booking
 node security-tests/patient-url-test.mjs   # QR URL resolver (13 checks)
 node security-tests/build-guard-test.mjs   # build guard (4 checks)
-node security-tests/mysql-e2e.mjs  # 81 checks (self-contained, throwaway MySQL)
+node security-tests/mysql-e2e.mjs  # 82 checks (self-contained, throwaway MySQL)
 ```
 
-## 1. Server prerequisites
+These checks validate the repository and the production build. They do not prove
+that the live server, Nginx configuration, network path, or deployed release is
+healthy.
+
+## 1. Server prerequisites (MITCS-managed)
+
+Rocky Linux 9.6, Node.js 20+, Nginx, MySQL 8.0, and systemd are managed by
+MITCS. Confirm them with MITCS; do not install, replace, or reconfigure server
+packages or the unit yourself.
+
+Read-only checks:
 
 ```bash
-# Node.js 20+ (MIT-approved), nginx, MySQL 8.0 already present
-node -v                    # >= 20
+node -v
+systemctl status --no-pager cho-services-appointment.service
 mysql -h 127.0.0.1 -u <dbuser> -p -e "SELECT VERSION();"
-sudo apt install -y pm2 certbot python3-certbot-nginx   # Debian/Ubuntu
 ```
 
-## 2. Get the code
+## 2. Application directory
+
+The application lives at
+`/var/www/cho-services-appointment.bacolodcity.gov.ph`. Confirm the live commit
+and service configuration before changing anything:
 
 ```bash
-sudo mkdir -p /var/www/cho && sudo chown $USER /var/www/cho
-cd /var/www/cho
-git clone https://github.com/JoaquinDomain/cho-appointment-system.git .
-npm ci
+git -C /var/www/cho-services-appointment.bacolodcity.gov.ph rev-parse --short HEAD
+systemctl cat cho-services-appointment.service
 ```
+
+Do not clone over, rebuild, or replace the live directory. Use the
+MITCS-approved staging/release directory for a fresh install or dependency
+change.
 
 ## 3. Environment (BEFORE build — NEXT_PUBLIC_* is baked in at build time)
 
+Edit `.env.local` in the application directory with an approved editor, then
+restrict it:
+
 ```bash
-nano .env.local && chmod 600 .env.local
+chmod 600 .env.local
 ```
 
 Fill from `.env.example`:
@@ -44,8 +77,8 @@ Fill from `.env.example`:
 MYSQL_HOST=127.0.0.1          # app + MySQL on the same server
 MYSQL_PORT=3306
 MYSQL_DATABASE=bcho_lab_appointment
-MYSQL_USER=<from MIT>
-MYSQL_PASSWORD=<from MIT>
+MYSQL_USER=<from MITCS>
+MYSQL_PASSWORD=<from MITCS>
 # NEXT_PUBLIC_APP_MODE: leave UNSET — single site (booking at /, staff at /admin).
 # `next build` FAILS if this is set to 'admin' (build guard in next.config.ts).
 NEXT_PUBLIC_PATIENT_SITE_URL=https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
@@ -54,168 +87,164 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=<key>
 TURNSTILE_SECRET_KEY=<key>    # booking fails closed without it
 ```
 
-## 4. Database schema + first admin
+Never commit `.env.local`, paste it into chat, or expose its values in shell
+history or logs.
+
+## 4. Database schema + first admin (approved change window)
+
+Run only during an approved install or change window, with MITCS and the database
+owner aware:
 
 ```bash
 mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment < ./mysql/schema.sql
 
 CHO_ADMIN_EMAIL='admin@cho.gov.ph' \
-CHO_ADMIN_PASSWORD='<strong-password-12+chars>' \
+CHO_ADMIN_PASSWORD='<from approved secret store>' \
 node scripts/seed-admin.mjs     # re-run to reset password; revokes sessions
+
 node scripts/check-database.mjs  # must report healthy
 ```
 
-## 5. Build + run with PM2
+Use the approved secret-entry method for the admin password; do not paste it
+into shell history or commit it.
 
-```bash
-npm run build
-pm2 start npm --name cho -- start
-pm2 save && pm2 startup         # survive reboots
-pm2 logs cho
-```
+## 5. Build and systemd service
 
-App is now on `127.0.0.1:3000`.
+Build in the MITCS-approved staging/release directory. Do not run `npm run build`
+in the live directory while it is serving — replacing `.next` mid-traffic can
+leave HTML and chunks mismatched.
 
-## 6. nginx vhost + HTTPS
+The app runs as systemd unit `cho-services-appointment.service` on
+`127.0.0.1:3000`. MITCS owns the unit. Do not start a second process manager,
+change `WorkingDirectory`/`ExecStart`, or restart production without MITCS
+inspection and approval.
 
-```bash
-sudo nano /etc/nginx/sites-available/cho
-```
+## 6. Nginx / HTTPS (MITCS-managed)
 
-```nginx
-# Keepalive upstream: reuses TCP connections to Node. Without this every
-# request (including the ~30 parallel JS chunks a first page load requests)
-# opens a new connection; a burst can overflow the accept queue and surface
-# as intermittent 503s on /_next/static/*.js, which dead-locks hydration.
-upstream cho_app {
-    server 127.0.0.1:3000;
-    keepalive 32;
-}
+MITCS manages Nginx and TLS on Rocky Linux 9.6. Do not create a vhost, add or
+replace a static alias, reload Nginx, or restart the app to work around a
+first-load failure. First ask MITCS for a read-only review of:
 
-server {
-    listen 80;
-    server_name cho-laboratory-services-appointment.bacolodcity.gov.ph;
+- the active configuration (`nginx -T`), including proxy/upstream, keepalive,
+  static-asset handling, and any `limit_conn`/`limit_req` settings;
+- the Nginx error and access logs;
+- the app upstream at `127.0.0.1:3000`, its timeouts, and upstream health;
+- `systemctl status --no-pager nginx`.
 
-    # Serve hashed build assets straight from disk: removes ~30 proxied
-    # requests per first load from Node entirely.
-    location /_next/static/ {
-        alias /var/www/cho/.next/static/;
-        access_log off;
-        expires 1y;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-    }
+If the logs and configuration confirm HTTP 503s on `/_next/static/*.js`, MITCS
+can evaluate keepalive/upstream capacity, serving hashed assets directly from
+the live release, and connection/request limits. Those are server-level changes;
+do not apply them outside MITCS coordination. Verify any change with the
+production deployment verifier.
 
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";       # enable keepalive to upstream
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;   # required: Secure cookies
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 60s;
-    }
-}
-```
-
-```bash
-sudo ln -s /etc/nginx/sites-available/cho /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d cho-laboratory-services-appointment.bacolodcity.gov.ph
-```
-
-Use the same release path in the alias that the Node service actually runs
-from. If you deploy via the `/var/www/cho-current` symlink in §10, change the
-alias to `/var/www/cho-current/.next/static/` (and the service
-`WorkingDirectory`) so nginx serves the assets of the release that is live.
-
-`X-Forwarded-Proto` is mandatory — without it admin session cookies never get
-the `Secure` flag in production.
+TLS certificates and renewal are also MITCS-managed. Preserve the existing
+`X-Forwarded-Proto` handling — without it, admin session cookies do not receive
+the `Secure` flag.
 
 ## 7. Verify
 
-Run the read-only deployment check **after every deploy and nginx change**. It
-loads the page in a headless browser, fails on any 4xx/5xx `/_next/static`
-request, waits for React hydration, and clicks an enabled calendar date:
+After an approved deploy or MITCS server change, run the read-only verifier from
+a local checkout against production:
 
 ```bash
 npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
 ```
 
-Never treat a deploy as complete while this check fails. A page where every
-calendar date is greyed out and the "taking longer than usual" notice appears is
-a hydration failure caused by missing JavaScript chunks, not a calendar bug.
+The verifier loads the page in a fresh headless browser, fails on any 4xx/5xx
+`/_next/static` asset, waits for React hydration, and clicks an enabled calendar
+date. It does **not** submit an appointment and does **not** write to production
+data; it may make read-only GET requests for quotas and blocked dates.
+
+A local test pass does not prove production infrastructure is fixed. Only
+repeated runs against the production URL after the MITCS-approved
+deploy/config change, combined with MITCS log confirmation, provide evidence
+that production is healthy.
+
+If every calendar date is greyed out and the "taking longer than usual" notice
+appears, the suspected cause is failed JavaScript chunk delivery preventing
+hydration — not necessarily a calendar bug. Production logs and configuration
+must confirm that before any server change.
+
+Other read-only checks:
 
 ```bash
-node scripts/check-database.mjs
+node scripts/check-database.mjs  # read-only; checks the DB configured in the current environment
 curl -sI https://cho-laboratory-services-appointment.bacolodcity.gov.ph/ | head -5
 curl -s https://cho-laboratory-services-appointment.bacolodcity.gov.ph/api/quotas
 ```
 
 - [ ] Booking page loads over HTTPS
 - [ ] `npm run verify:deploy -- https://...` passes
-- [ ] Test appointment books and appears in the DB
 - [ ] Security headers present (`curl -sI ... | grep -i content-security`)
 - [ ] Footer link "CHO Staff Login" opens `/admin` and login works
+- [ ] Test appointment books and appears in the DB — only with authorization;
+      this is the one check that writes production data
 
-## 8. Firewall / access (MIT)
+## 8. Firewall / access (MITCS)
 
-- MySQL 3306: whitelisted IPs only; app uses `127.0.0.1` so it never crosses the firewall
-- SSH: whitelist `119.93.84.15` (or your current office IP — check with `curl api.ipify.org`)
+- MySQL 3306: whitelisted IPs only; the app uses `127.0.0.1`, so it does not
+  cross the firewall.
+- SSH: whitelist `119.93.84.15` (or your current office IP — confirm with
+  `curl api.ipify.org` before requesting a change).
+- Firewall changes are MITCS-managed.
 
 ## 9. Backups (patient data — required)
 
-```bash
-mkdir -p /var/backups/cho
-(crontab -l; echo "0 2 * * * mysqldump -h 127.0.0.1 -u <dbuser> -p'<pw>' --single-transaction --routines bcho_lab_appointment | gzip > /var/backups/cho/$(date +\%F).sql.gz") | crontab -
-```
+Use an approved MySQL option file or secret-management method so the database
+password never appears in cron, shell history, or dump output.
 
-Weekly minimum; copy exports off-machine. Restore practice: load into a scratch
-database first. See SETUP.md §5.
+- Restrict the option file to the backup account and mode `0600`; never embed
+  the password directly in a cron command.
+- Dump `bcho_lab_appointment` with `--single-transaction --routines` on a
+  MITCS-approved schedule and location.
+- Use restrictive permissions for backup directories (`0700`) and files
+  (`0600`), and encrypt off-site copies as required.
+- Keep at least weekly backups and copy exports off-machine.
+- Test restores in a scratch database, never in production. See SETUP.md §5.
 
-## 10. Updating later
+## 10. Updating later (with MITCS)
 
-Do not rebuild in the live directory while it is serving — `npm run build`
-replaces `.next` mid-traffic and can leave HTML and chunks mismatched.
-Build in a staging directory, then swap:
+Do not rebuild in the live directory, create symlinks, change the unit, or
+restart production before inspecting the existing MITCS-managed configuration.
 
-```bash
-# 1. Confirm what is actually live before touching anything
-cd /var/www/cho && git rev-parse --short HEAD
+1. Confirm the live release and service contract:
 
-# 2. Build the new release in a staging directory
-rsync -a --delete /var/www/cho/ /var/www/cho-staging/ --exclude .env.local --exclude node_modules
-cd /var/www/cho-staging && git pull && npm ci && npm run build
+   ```bash
+   git -C /var/www/cho-services-appointment.bacolodcity.gov.ph rev-parse --short HEAD
+   systemctl cat cho-services-appointment.service
+   systemctl status --no-pager cho-services-appointment.service
+   ```
 
-# 3. Swap the symlink the app service uses, restart, and verify
-sudo ln -sfn /var/www/cho-staging /var/www/cho-current
-sudo systemctl restart cho          # or: pm2 restart cho
-npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
-```
+2. Ask MITCS for the approved staging/release directory and release-swap
+   procedure. Build with `npm ci && npm run build` there, never in the live
+   directory.
 
-If the app is managed by systemd (as on the current server), restart with
-`sudo systemctl restart cho`; the DEPLOY.md §5 commands assume pm2 — check
-`systemctl status cho` vs `pm2 list` on the server and use whichever runs it.
-Do not consider the update finished until `verify:deploy` passes and
-`git rev-parse --short HEAD` on the server matches the commit that was built.
+3. MITCS performs the release swap and restarts
+   `cho-services-appointment.service` after inspecting the unit and Nginx
+   configuration.
+
+4. Run the production verifier:
+
+   ```bash
+   npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
+   ```
+
+5. Do not consider the update finished until the live commit matches the built
+   commit, the verifier passes, and MITCS confirms the Nginx/error logs no longer
+   show relevant 503 or upstream failures.
 
 ## Notes
 
-- Never commit `.env.local`; rotate the MySQL password if it ever appears in chat/logs.
-- `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (local `next dev`
-  convenience); production leaves it unset so `/` serves the booking form, and
-  `next build` refuses to run if it is set to `admin` (build guard).
-- **Intermittent 503s on `/_next/static/*.js`** kill page interactivity: React
-  never hydrates, so every calendar date stays disabled even though the form
-  looks rendered. A refresh works because the failed chunks are fetched again
-  and succeed. The app shows a Refresh notice as a fallback, but the delivery
-  problem must be fixed in nginx (vhost §6: keepalive upstream + static alias).
-  Diagnose with:
-
-  ```bash
-  sudo tail -f /var/log/nginx/error.log        # "limiting requests", "no live upstreams", "connect() failed"
-  sudo nginx -T | grep -iE 'limit_conn|limit_req|keepalive'
-  npm run verify:deploy -- https://cho-laboratory-services-appointment.bacolodcity.gov.ph/
-  ```
-
-  Localhost 200s with public 503s point at nginx/limits, not the Node app.
+- Never commit `.env.local`; rotate the MySQL password if it is ever exposed.
+- `NEXT_PUBLIC_APP_MODE=admin` only makes `/` redirect to `/admin` (local
+  `next dev` convenience); production leaves it unset so `/` serves the booking
+  form, and `next build` refuses to run if it is set to `admin` (build guard).
+- Intermittent 503s on `/_next/static/*.js` are a **suspected** cause of disabled
+  dates on first load: without those chunks React cannot hydrate, so the
+  calendar stays disabled even though the form looks rendered. Confirm this from
+  production Nginx logs and configuration before changing the server.
+- A manual refresh may recover a transient chunk failure, but it does not fix
+  the delivery problem.
+- Always confirm the live commit; production may not match `main`.
+- Localhost returning 200 while the public site returns 503s is useful evidence
+  for MITCS, not proof of the exact Nginx directive or limit.
