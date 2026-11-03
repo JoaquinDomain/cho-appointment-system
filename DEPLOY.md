@@ -96,13 +96,27 @@ Run only during an approved install or change window, with MITCS and the databas
 owner aware:
 
 ```bash
+# Existing installation: additive capacity migration (safe before the new code).
+# It only creates test_capacities and seeds missing tests; it never changes
+# appointments or overwrites an admin's saved capacity.
+mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment \
+  < ./mysql/migrate_test_capacities.sql
+
+# Fresh installation (already includes test_capacities + seed):
 mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment < ./mysql/schema.sql
 
 CHO_ADMIN_EMAIL='admin@cho.gov.ph' \
 CHO_ADMIN_PASSWORD='<from approved secret store>' \
 node scripts/seed-admin.mjs     # re-run to reset password; revokes sessions
 
-node scripts/check-database.mjs  # must report healthy
+node scripts/check-database.mjs  # must report healthy, including test_capacities
+```
+
+Take a database backup before the capacity migration and confirm the new table:
+
+```bash
+mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment \
+  -e "SELECT test_label, max_online_capacity FROM test_capacities ORDER BY test_label;"
 ```
 
 Use the approved secret-entry method for the admin password; do not paste it
@@ -232,6 +246,20 @@ restart production before inspecting the existing MITCS-managed configuration.
 5. Do not consider the update finished until the live commit matches the built
    commit, the verifier passes, and MITCS confirms the Nginx/error logs no longer
    show relevant 503 or upstream failures.
+
+### Capacity release order and rollback
+
+1. Backup `bcho_lab_appointment` (routine backups are required before any change).
+2. Apply `mysql/migrate_test_capacities.sql` and run the verification query above.
+3. Deploy/restart the new release and run the production verifier.
+4. If the release must be rolled back, restore the previous application release
+   first. The previous release ignores `test_capacities`, so leaving the table in
+   place is the safest default and preserves any capacity values for the next
+   deploy. Only after confirming the previous release is healthy and with MITCS
+   approval, optionally remove it with `DROP TABLE IF EXISTS test_capacities;`.
+   Never restore the pre-change backup over production without an approved
+   incident procedure — doing so would discard appointments created after the
+   backup.
 
 ## Notes
 

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { dbQuery, dbRun } from '@/lib/db/mysql'
+import { dbQuery, dbTransaction } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp, limitFromEnv } from '@/lib/security/rate-limit'
-import { TEST_CONFIG, onlineLimitForTest } from '@/lib/types'
+import { ensureTestCapacitiesTable } from '@/lib/test-capacities'
 import { mapAppointmentRow, escapeLike, type AppointmentRow } from '@/lib/appointments'
 import { ensureStatusColumn, isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
@@ -111,70 +111,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to validate the appointment date.' }, { status: 500 })
   }
 
-  let existing: QuotaRow[]
-  try {
-    // read by date. cancelled frees the slot, walkins are separate
-    // so online booking does not eat the walkin half.
-    // old db may not have the new columns, fix then use old query.
-    try {
-      existing = await dbQuery<QuotaRow>(
-        'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
-        [parsed.data.appointment_date]
-      )
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : ''
-      if (isMissingSourceColumn(msg)) {
-        await ensureSourceColumn()
-        try {
-          existing = await dbQuery<QuotaRow>(
-            'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ?',
-            [parsed.data.appointment_date]
-          )
-        } catch {
-          existing = await dbQuery<QuotaRow>(
-            'SELECT selected_tests, status FROM appointments WHERE appointment_date = ?',
-            [parsed.data.appointment_date]
-          )
-        }
-      } else if (isMissingStatusColumn(msg)) {
-        existing = await dbQuery<QuotaRow>(
-          'SELECT selected_tests FROM appointments WHERE appointment_date = ?',
-          [parsed.data.appointment_date]
-        )
-      } else {
-        throw e
-      }
-    }
-  } catch (e) {
-    // details stay in server logs — never sent to clients
-    console.error('Quota check failed:', e)
-    return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
-  }
-
-  // same counting as quotas api, online only
-  const counts = countBookedTestsBySource(existing).online
-
-  const testConfigs = Object.values(TEST_CONFIG)
-  const overLimit: string[] = []
-  for (const label of parsed.data.selected_tests) {
-    const config = testConfigs.find((t) => t.label === label)
-    // ECG uses full limit, others use online half
-    const onlineLimit = config ? onlineLimitForTest(config.limit, label) : 0
-    if (config && (counts[label] || 0) >= onlineLimit) {
-      overLimit.push(`${label} (Online limit: ${onlineLimit}, Booked: ${counts[label]})`)
-    }
-  }
-  if (overLimit.length > 0) {
-    return NextResponse.json(
-      {
-        error: `Online slots for ${parsed.data.appointment_date} are full (half of daily capacity is reserved for walk-ins): ${overLimit.join(', ')}. Please select another day that still has online slots.`,
-      },
-      { status: 400 }
-    )
-  }
-
   const id = randomUUID()
   const createdAt = new Date().toISOString()
+  const selectedTests = parsed.data.selected_tests
+  const capacityPlaceholders = selectedTests.map(() => '?').join(', ')
   const params = [
     id,
     parsed.data.patient_name,
@@ -187,82 +127,128 @@ export async function POST(req: Request) {
     parsed.data.consultation_facility,
     parsed.data.yakap_registered ? 1 : 0,
     parsed.data.yakap_facility,
-    JSON.stringify(parsed.data.selected_tests),
+    JSON.stringify(selectedTests),
     parsed.data.appointment_date,
     createdAt,
   ]
-  const legacyParams = [
-    id,
-    parsed.data.patient_name,
-    parsed.data.age,
-    parsed.data.consultation_facility,
-    parsed.data.yakap_registered ? 1 : 0,
-    parsed.data.yakap_facility,
-    JSON.stringify(parsed.data.selected_tests),
-    parsed.data.appointment_date,
-    createdAt,
-  ]
-  const insertMain = () =>
-    dbRun(
-      `INSERT INTO appointments
-        (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`,
-      params
-    )
-  try {
-    await insertMain()
-  } catch (e) {
-    // if contact_number or name/birthdate columns are missing, add them then try again
-    const msg0 = e instanceof Error ? e.message : ''
-    if (isMissingContactColumn(msg0)) {
-      const healed = await ensureContactColumn()
-      if (healed.ok) {
-        try {
-          await insertMain()
-          return NextResponse.json({ success: true, id }, { status: 201 })
-        } catch (retryErr) {
-          e = retryErr
-        }
-      }
-    }
-    if (isMissingNameColumn(e instanceof Error ? e.message : '')) {
-      const healed = await ensureNameColumns()
-      if (healed.ok) {
-        try {
-          await insertMain()
-          return NextResponse.json({ success: true, id }, { status: 201 })
-        } catch (retryErr) {
-          e = retryErr
-        }
-      }
-    }
-    const msg = e instanceof Error ? e.message : ''
-    // old db has no status/source yet, use old insert so booking still works
-    if (isMissingStatusColumn(msg) || isMissingSourceColumn(msg)) {
-      console.warn(
-        'appointments.status/source/contact column missing - booking with legacy schema. ' +
-          'Re-apply the schema: mysql -h <host> -u <user> -p <database> < ./mysql/schema.sql'
+  const insertSql = `INSERT INTO appointments
+    (id, patient_name, last_name, first_name, middle_name, birthdate, age, contact_number, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, status, source, created_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'online', ?)`
+
+  type BookingResult =
+    | { booked: true }
+    | { booked: false; overLimit: string[] }
+
+  // Serialize all online bookings for the selected tests on their capacity
+  // rows, then count and insert in the same transaction. A second request for
+  // the same full test waits for the first to commit, so two concurrent
+  // requests cannot both take the last slot.
+  const runBooking = () =>
+    dbTransaction<BookingResult>(async (tx) => {
+      const capacityRows = await tx.query<{
+        test_label: string
+        max_online_capacity: number | string
+      }>(
+        `SELECT test_label, max_online_capacity
+         FROM test_capacities
+         WHERE test_label IN (${capacityPlaceholders})
+         ORDER BY test_label
+         FOR UPDATE`,
+        selectedTests
       )
-      try {
-        await dbRun(
-          `INSERT INTO appointments
-            (id, patient_name, age, consultation_facility, yakap_registered, yakap_facility, selected_tests, appointment_date, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          legacyParams
+
+      const capacities = new Map<string, number>()
+      for (const row of capacityRows) {
+        const value = Number(row.max_online_capacity)
+        capacities.set(
+          row.test_label,
+          Number.isInteger(value) && value >= 0 ? value : 0
         )
-      } catch (retryErr) {
-        console.error('Booking insert failed (legacy retry):', retryErr)
-        return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
       }
-    } else {
+      const missing = selectedTests.filter((label) => !capacities.has(label))
+      if (missing.length > 0) {
+        throw new Error(`Missing test capacity row(s): ${missing.join(', ')}`)
+      }
+
+      const existing = await tx.query<QuotaRow>(
+        'SELECT selected_tests, status, source FROM appointments WHERE appointment_date = ? FOR UPDATE',
+        [parsed.data.appointment_date]
+      )
+      const counts = countBookedTestsBySource(existing).online
+
+      const overLimit: string[] = []
+      for (const label of selectedTests) {
+        const capacity = capacities.get(label) ?? 0
+        if ((counts[label] || 0) >= capacity) {
+          overLimit.push(
+            `${label} (Online capacity: ${capacity}, Booked: ${counts[label] || 0})`
+          )
+        }
+      }
+      if (overLimit.length > 0) return { booked: false, overLimit }
+
+      await tx.run(insertSql, params)
+      return { booked: true }
+    }, { readCommitted: true })
+
+  try {
+    await ensureTestCapacitiesTable()
+  } catch (e) {
+    console.error('Capacity table initialization failed:', e)
+    return NextResponse.json({ error: 'Failed to validate test capacities.' }, { status: 500 })
+  }
+
+  let result: BookingResult
+  let deadlockRetries = 0
+  let healedContact = false
+  let healedName = false
+  let healedStatus = false
+  let healedSource = false
+  for (;;) {
+    try {
+      result = await runBooking()
+      break
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+
+      if (/deadlock|lock wait timeout/i.test(msg) && deadlockRetries < 3) {
+        deadlockRetries += 1
+        await new Promise((resolve) => setTimeout(resolve, 25 * deadlockRetries))
+        continue
+      }
+
+      // very old database: add the missing columns, then re-run the whole
+      // transaction so capacity is rechecked after the schema change.
+      if (isMissingContactColumn(msg) && !healedContact) {
+        healedContact = true
+        const healed = await ensureContactColumn()
+        if (healed.ok) continue
+        console.error('Capacity booking needs contact-number migration:', healed.message)
+      } else if (isMissingNameColumn(msg) && !healedName) {
+        healedName = true
+        const healed = await ensureNameColumns()
+        if (healed.ok) continue
+        console.error('Capacity booking needs names/birthday migration:', healed.message)
+      } else if (isMissingStatusColumn(msg) && !healedStatus) {
+        healedStatus = true
+        const healed = await ensureStatusColumn()
+        if (healed.ok) continue
+        console.error('Capacity booking needs status migration:', healed.message)
+      } else if (isMissingSourceColumn(msg) && !healedSource) {
+        healedSource = true
+        const healed = await ensureSourceColumn()
+        if (healed.ok) continue
+        console.error('Capacity booking needs source migration:', healed.message)
+      }
+
       // details stay in server logs — never sent to clients
-      console.error('Booking insert failed:', e)
+      console.error('Booking failed:', e)
       if (/CHECK|constraint/i.test(msg)) {
         return NextResponse.json({ error: 'Booking rejected. Please check your inputs.' }, { status: 400 })
       }
       if (/no such table|doesn't exist/i.test(msg)) {
         console.error(
-          'Appointments table not found. Apply the database schema: mysql -h <host> -u <user> -p <database> < ./mysql/schema.sql'
+          'Appointments or test_capacities table not found. Apply the database schema: mysql -h <host> -u <user> -p <database> < ./mysql/schema.sql'
         )
       }
       if (/Missing MySQL env/i.test(msg)) {
@@ -277,6 +263,15 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: 'Failed to create appointment.' }, { status: 500 })
     }
+  }
+
+  if (!result.booked) {
+    return NextResponse.json(
+      {
+        error: `Online slots for ${parsed.data.appointment_date} are full: ${result.overLimit.join(', ')}. Please select another day or another test.`,
+      },
+      { status: 400 }
+    )
   }
 
   return NextResponse.json({ success: true, id }, { status: 201 })

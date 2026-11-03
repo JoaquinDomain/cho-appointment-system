@@ -122,3 +122,64 @@ export async function dbRun(sql: string, params: unknown[] = []): Promise<number
   }
   return 0
 }
+
+/** Helpers bound to a single transaction connection. */
+export interface DbTransaction {
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>
+  first<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | null>
+  run(sql: string, params?: unknown[]): Promise<number>
+}
+
+/**
+ * Run a callback inside a MySQL transaction on one pool connection. The
+ * callback must use the passed helpers so every statement shares the same
+ * transaction. The connection is always released and rolled back on error.
+ *
+ * readCommitted avoids InnoDB gap locks on empty date ranges, which keeps
+ * concurrent bookings for different tests from deadlocking; callers that
+ * need capacity serialization take explicit row locks with SELECT ... FOR UPDATE.
+ */
+export async function dbTransaction<T>(
+  fn: (tx: DbTransaction) => Promise<T>,
+  options: { readCommitted?: boolean } = {}
+): Promise<T> {
+  const conn = await getPool().getConnection()
+  try {
+    if (options.readCommitted) {
+      await conn.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+    }
+    await conn.beginTransaction()
+
+    const execute = async (sql: string, params: unknown[] = []) => {
+      const values = toValues(params)
+      return values.length > 0 ? conn.execute(sql, values) : conn.execute(sql)
+    }
+
+    const tx: DbTransaction = {
+      async query<R = Record<string, unknown>>(sql: string, params: unknown[] = []) {
+        const [rows] = await execute(sql, params)
+        return Array.isArray(rows) ? (rows as R[]) : []
+      },
+      async first<R = Record<string, unknown>>(sql: string, params: unknown[] = []) {
+        const [rows] = await execute(sql, params)
+        return Array.isArray(rows) ? ((rows[0] as R | undefined) ?? null) : null
+      },
+      async run(sql: string, params: unknown[] = []) {
+        const [result] = await execute(sql, params)
+        if (result && typeof result === 'object' && 'affectedRows' in result) {
+          return (result as ResultSetHeader).affectedRows
+        }
+        return 0
+      },
+    }
+
+    const result = await fn(tx)
+    await conn.commit()
+    return result
+  } catch (error) {
+    await conn.rollback().catch(() => {})
+    throw error
+  } finally {
+    conn.release()
+  }
+}

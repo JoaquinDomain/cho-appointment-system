@@ -133,6 +133,16 @@ async function main() {
   )
   add('schema creates appointments + admin_users + admin_sessions', tables.length === 3, `found=${tables.length}`)
 
+  const [capacityTable] = await conn.query(
+    "SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'test_capacities'"
+  )
+  const [capacitySeeds] = await conn.query('SELECT COUNT(*) AS c FROM test_capacities')
+  add(
+    'schema creates seeded test_capacities',
+    capacityTable.length === 1 && Number(capacitySeeds[0].c) === 17,
+    `rows=${capacitySeeds[0].c}`
+  )
+
   const adminEmail = 'e2e-admin@example.com'
   const adminPassword = randomBytes(16).toString('base64')
   await conn.execute('INSERT INTO admin_users (email, password_hash) VALUES (?, ?)', [
@@ -272,10 +282,17 @@ async function main() {
   let res = await fetch(`${BASE}/api/quotas?date=${LOCAL_TODAY}`, { headers: { 'X-Forwarded-For': '203.0.113.10' } })
   const quotas = await res.json().catch(() => ({}))
   add(
-    'GET /api/quotas (public) -> 200 with count objects',
-    res.status === 200 && typeof quotas.counts === 'object' && typeof quotas.walkinCounts === 'object',
-    `status=${res.status}`
+    'GET /api/quotas (public) -> 200 with count/capacity objects',
+    res.status === 200 && typeof quotas.counts === 'object' &&
+      typeof quotas.walkinCounts === 'object' &&
+      typeof quotas.capacities === 'object' && typeof quotas.available === 'object',
+    `status=${res.status} cbc=${quotas.capacities?.CBC}`
   )
+
+  res = await fetch(`${BASE}/api/admin/capacities?date=${LOCAL_TODAY}`, {
+    headers: { 'X-Forwarded-For': '203.0.113.10' },
+  })
+  add('GET /api/admin/capacities without session -> 401', res.status === 401, `status=${res.status}`)
 
   res = await fetch(`${BASE}/api/appointments`, {
     method: 'POST',

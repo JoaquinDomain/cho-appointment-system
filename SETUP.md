@@ -16,7 +16,14 @@ mysql -u root -p bcho_lab_appointment < ./mysql/schema.sql
 This creates `appointments`, `admin_users`, and `admin_sessions` (empty —
 fresh start; see `mysql/schema.sql` for constraints, CHECK rules and indexes).
 `blocked_dates` (days closed by an admin) is in the same file and the app also
-creates it on first use.
+creates it on first use. `test_capacities` (admin-managed daily online capacity
+per test) is seeded once with the previous hardcoded online limits.
+
+For an existing database, apply only the additive capacity migration:
+
+```bash
+mysql -u root -p bcho_lab_appointment < ./mysql/migrate_test_capacities.sql
+```
 
 Create an application user (do not run the app as `root`):
 
