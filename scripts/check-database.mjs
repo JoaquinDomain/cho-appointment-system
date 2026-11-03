@@ -51,8 +51,24 @@ async function checkDatabase() {
       console.log('No appointments found in database\n')
     }
 
+    // Check admin-managed capacity table
+    console.log('5. Checking test_capacities table...')
+    const [capacityCheck] = await pool.query(
+      'SELECT table_name AS name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?',
+      ['test_capacities']
+    )
+    if (capacityCheck.length === 0) {
+      console.log(
+        'test_capacities table NOT found - apply mysql/migrate_test_capacities.sql\n'
+      )
+      process.exitCode = 1
+    } else {
+      const [capacityCount] = await pool.query('SELECT COUNT(*) AS count FROM test_capacities')
+      console.log(`test_capacities rows: ${capacityCount[0].count}\n`)
+    }
+
     // Check admin users
-    console.log('5. Checking admin users...')
+    console.log('6. Checking admin users...')
     const [adminCheck] = await pool.query('SELECT email FROM admin_users')
     if (adminCheck.length > 0) {
       console.log('Admin users:')

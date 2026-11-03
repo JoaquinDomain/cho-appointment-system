@@ -85,9 +85,12 @@ npm start
 ### Tests
 
 ```bash
-node scripts/check-database.mjs      # connectivity + schema/seed sanity
-node security-tests/mysql-e2e.mjs    # full booking/admin/auth suite against a
-                                     # throwaway MySQL 8.0 (downloaded on first run)
+node scripts/check-database.mjs        # connectivity + schema/seed sanity
+node security-tests/mysql-e2e.mjs      # full booking/admin/auth suite against a
+                                       # throwaway MySQL 8.0 (downloaded on first run)
+node security-tests/capacity-e2e.mjs   # capacity CRUD, availability, concurrency,
+                                       # migration and restart persistence
+npm run test:calendar                  # patient calendar/form browser regression
 ```
 
 ## Database Schema
@@ -100,6 +103,10 @@ The system uses MySQL tables (see `mysql/schema.sql`):
 - `admin_sessions`: hashed opaque session tokens with expiry
 - `blocked_dates`: days closed by an admin (`blocked_date` PK, optional reason,
   who blocked it and when) — refuses new online bookings and walk-ins only
+- `test_capacities`: admin-managed daily online capacity per laboratory test
+  (`test_label` PK, capacity, last editor/time). Availability is calculated
+  from these rows and the non-cancelled online appointments for the selected
+  date; walk-ins are tracked separately.
 
 ## Security
 

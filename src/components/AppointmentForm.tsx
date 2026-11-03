@@ -5,7 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { User, MapPin, AlertCircle, CheckCircle, Check, ChevronDown, Search, SearchX, X, Moon, ClipboardCheck, ShieldCheck, CalendarDays, FileText, House, Info } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
-import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, onlineLimitForTest, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
+import { HEALTH_FACILITIES, TEST_CONFIG, FASTING_REQUIRED_TESTS, ECG_LABEL, ECG_WEEKDAY, unavailableDateReason } from '@/lib/types'
 import { useHydrated } from '@/lib/useHydrated'
 import TurnstileWidget from '@/components/TurnstileWidget'
 
@@ -208,6 +208,8 @@ export default function AppointmentForm() {
   })
 
   const [testCounts, setTestCounts] = useState<Record<string, number>>({})
+  const [testCapacities, setTestCapacities] = useState<Record<string, number>>({})
+  const [testAvailable, setTestAvailable] = useState<Record<string, number>>({})
   const [quotasLoaded, setQuotasLoaded] = useState(false)
   const [loadingQuotas, setLoadingQuotas] = useState(false)
   const [quotaVersion, setQuotaVersion] = useState(0)
@@ -262,6 +264,8 @@ export default function AppointmentForm() {
       queueMicrotask(() => {
         if (!ignore) {
           setTestCounts({})
+          setTestCapacities({})
+          setTestAvailable({})
           setQuotasLoaded(false)
         }
       })
@@ -278,19 +282,26 @@ export default function AppointmentForm() {
           const data = await res.json()
           if (!ignore) {
             const newCounts: Record<string, number> = data.counts || {}
+            const newCapacities: Record<string, number> = data.capacities || {}
+            const newAvailable: Record<string, number> = data.available || {}
             setTestCounts(newCounts)
+            setTestCapacities(newCapacities)
+            setTestAvailable(newAvailable)
             setQuotasLoaded(true)
 
-            // Deselect any tests whose online share is fully booked for the
-            // chosen date (half of capacity is reserved for walk-ins,
-            // except online-only tests like ECG with the full limit online).
-            const testConfigs = Object.values(TEST_CONFIG)
+            // Deselect tests whose admin-managed online capacity is already
+            // used up for the chosen date. The server rechecks at submit time.
             setFormData(prev => {
               const validSelectedTests = prev.selectedTests.filter(testLabel => {
-                const config = testConfigs.find(t => t.label === testLabel)
-                if (!config) return true
-                const count = newCounts[testLabel] || 0
-                return count < onlineLimitForTest(config.limit, config.label)
+                const available = newAvailable[testLabel]
+                if (typeof available === 'number') return available > 0
+                const capacity = newCapacities[testLabel]
+                if (typeof capacity === 'number') {
+                  return (newCounts[testLabel] || 0) < capacity
+                }
+                // An unknown test must not be silently allowed through the UI;
+                // keep it selectable and let the server reject if necessary.
+                return true
               })
 
               if (validSelectedTests.length !== prev.selectedTests.length) {
@@ -335,16 +346,16 @@ export default function AppointmentForm() {
       setSubmitError(blockedDayMessage)
       return
     }
-    // block submit if online slots are full for this date
+    // block submit if the admin-managed online capacity is used up
     if (quotasLoaded && formData.appointmentDate) {
       const full = formData.selectedTests.filter(label => {
-        const cfg = Object.values(TEST_CONFIG).find(t => t.label === label)
-        return cfg && (testCounts[label] || 0) >= onlineLimitForTest(cfg.limit, cfg.label)
+        const available = testAvailable[label]
+        if (typeof available === 'number') return available <= 0
+        const capacity = testCapacities[label]
+        return typeof capacity === 'number' && (testCounts[label] || 0) >= capacity
       })
       if (full.length > 0) {
-        setSubmitError(
-          `Online slots for this day are full: ${full.join(', ')}. Half of daily capacity is reserved for walk-ins. Please select another day.`
-        )
+        setSubmitError('No online slots available for this test.')
         return
       }
     }
@@ -883,15 +894,20 @@ export default function AppointmentForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filteredTests.map(config => {
                 const test = config.label
-                // online share only, rest is for walkin
-                const limit = onlineLimitForTest(config.limit, config.label)
+                // capacity is the admin-managed daily online maximum for this test
+                const capacity = quotasLoaded ? testCapacities[test] ?? 0 : null
                 // use loaded counts only, do not show 0 if not loaded yet
                 const bookedCount = quotasLoaded ? testCounts[test] || 0 : 0
-                const availableCount = Math.max(0, limit - bookedCount)
+                const availableCount =
+                  capacity === null
+                    ? 0
+                    : testAvailable[test] ?? Math.max(0, capacity - bookedCount)
                 const hasQuotaData = Boolean(formData.appointmentDate) && quotasLoaded
-                const isFullyBooked = hasQuotaData && bookedCount >= limit
+                const isFullyBooked = hasQuotaData && availableCount <= 0
                 const checked = formData.selectedTests.includes(test)
-                const pct = Math.round((availableCount / limit) * 100)
+                const pct = capacity && capacity > 0
+                  ? Math.round((availableCount / capacity) * 100)
+                  : 0
 
                 return (
                   <label
@@ -919,8 +935,8 @@ export default function AppointmentForm() {
                           </span>
                           <span className="text-[11px] text-muted tabular-nums">
                             {hasQuotaData
-                              ? `${availableCount} of ${limit} online slots left`
-                              : `Up to ${limit} online per day`}
+                              ? `${availableCount} of ${capacity} online slots left`
+                              : 'Select a date to see online availability'}
                           </span>
                           {test === ECG_LABEL && (
                             <span className="text-[11px] font-semibold text-brand">
@@ -945,7 +961,7 @@ export default function AppointmentForm() {
                     )}
                     {isFullyBooked && (
                       <span className="self-start px-2 py-0.5 text-[11px] font-bold rounded-full bg-danger-surface text-danger border border-danger/30">
-                        Fully booked: pick another day
+                        No online slots available for this test.
                       </span>
                     )}
                   </label>

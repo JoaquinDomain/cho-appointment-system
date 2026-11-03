@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, Calendar, User, MapPin, Phone, Clock, Scan, X, Trash2, FlaskConical, HeartHandshake, Hash, Users, CalendarCheck, Download, Pencil, BarChart3, UserPlus, LayoutDashboard } from 'lucide-react'
-import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, onlineLimitFor, type AppointmentStatus } from '@/lib/types'
+import { Appointment, HEALTH_FACILITIES, APPOINTMENT_STATUSES, TEST_CONFIG, MAX_ONLINE_CAPACITY, parseOnlineCapacity, type AppointmentStatus } from '@/lib/types'
 import { computeAge, formatPatientName } from '@/lib/appointments'
 import QRScanner from './QRScanner'
 import WalkinModal from './WalkinModal'
@@ -60,6 +60,12 @@ export default function AdminDashboard() {
   const [quotaCounts, setQuotaCounts] = useState<Record<string, number>>({})
   const [quotaWalkins, setQuotaWalkins] = useState<Record<string, number>>({})
   const [quotaTotals, setQuotaTotals] = useState<Record<string, number>>({})
+  const [quotaCapacities, setQuotaCapacities] = useState<Record<string, number>>({})
+  const [quotaAvailable, setQuotaAvailable] = useState<Record<string, number>>({})
+  const [quotaDrafts, setQuotaDrafts] = useState<Record<string, string>>({})
+  const [quotaSaving, setQuotaSaving] = useState('')
+  const [quotaSaved, setQuotaSaved] = useState('')
+  const [quotaSaveError, setQuotaSaveError] = useState('')
   const [quotaLoading, setQuotaLoading] = useState(false)
   const [quotaError, setQuotaError] = useState('')
   const [showWalkin, setShowWalkin] = useState(false)
@@ -155,9 +161,18 @@ export default function AdminDashboard() {
         // keep old numbers, do not show failed load as zero
         throw new Error((json as { error?: string }).error ?? 'Failed to fetch quota data')
       }
+      const capacities =
+        (json as { capacities?: Record<string, number> }).capacities ?? {}
       setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
       setQuotaWalkins((json as { walkinCounts?: Record<string, number> }).walkinCounts ?? {})
       setQuotaTotals((json as { totalCounts?: Record<string, number> }).totalCounts ?? {})
+      setQuotaCapacities(capacities)
+      setQuotaAvailable((json as { available?: Record<string, number> }).available ?? {})
+      setQuotaDrafts(
+        Object.fromEntries(
+          Object.entries(capacities).map(([label, value]) => [label, String(value)])
+        )
+      )
     } catch (err) {
       setQuotaError(err instanceof Error ? err.message : 'Failed to fetch quota data')
     } finally {
@@ -169,6 +184,47 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (showQuotas) void fetchQuotas(quotaDate)
   }, [showQuotas, quotaDate, fetchQuotas])
+
+  const saveCapacity = async (label: string) => {
+    const capacity = parseOnlineCapacity(quotaDrafts[label])
+    if (capacity === null) {
+      setQuotaSaved('')
+      setQuotaSaveError(
+        `Capacity for ${label} must be a whole number from 0 to ${MAX_ONLINE_CAPACITY}.`
+      )
+      return
+    }
+    setQuotaSaving(label)
+    setQuotaSaved('')
+    setQuotaSaveError('')
+    try {
+      const res = await fetch('/api/admin/capacities', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_label: label,
+          max_online_capacity: capacity,
+          date: quotaDate,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (res.status === 401) throw new Error('Session expired. Please log in again.')
+      if (!res.ok) {
+        throw new Error(
+          (json as { error?: string }).error ?? 'Failed to update the test capacity.'
+        )
+      }
+      await fetchQuotas(quotaDate)
+      setQuotaSaved(`${label} online capacity saved.`)
+    } catch (err) {
+      setQuotaSaveError(
+        err instanceof Error ? err.message : 'Failed to update the test capacity.'
+      )
+    } finally {
+      setQuotaSaving('')
+    }
+  }
 
   // server already filters, just keep name so template stays same
   const filteredAppointments = appointments
@@ -593,7 +649,7 @@ export default function AdminDashboard() {
             aria-expanded={showQuotas}
           >
             <BarChart3 className="w-4 h-4" />
-            {showQuotas ? 'Hide Quotas' : 'Daily Quotas'}
+            {showQuotas ? 'Hide Capacity' : 'Online Capacity'}
           </button>
           <button
             onClick={() => setShowBlockDate(true)}
@@ -619,16 +675,20 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-sm border border-line p-4 sm:p-5 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-base font-bold text-navy">Online capacity by test</h2>
-                <p className="text-xs text-muted mt-0.5">Half of each test&apos;s daily slots are held for walk-ins. Bars show online slots remaining.</p>
+                <h2 className="text-base font-bold text-navy">Daily online capacity by test</h2>
+                <p className="text-xs text-muted mt-0.5">The maximum applies to every date. Pick a date to view that day&apos;s online bookings; walk-ins are counted separately and do not use these slots.</p>
               </div>
               <div className="flex items-center gap-2">
-                <label htmlFor="quota-date" className="text-sm font-medium text-ink">Quota date</label>
+                <label htmlFor="quota-date" className="text-sm font-medium text-ink">View date</label>
                 <input
                   id="quota-date"
                   type="date"
                   value={quotaDate}
-                  onChange={(e) => setQuotaDate(e.target.value)}
+                  onChange={(e) => {
+                    setQuotaDate(e.target.value)
+                    setQuotaSaved('')
+                    setQuotaSaveError('')
+                  }}
                   className="px-3 py-2 border border-line rounded-xl text-ink bg-white text-sm outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
               </div>
@@ -640,42 +700,82 @@ export default function AdminDashboard() {
               </p>
             )}
             {quotaError && <p className="text-sm text-danger mb-2">{quotaError}</p>}
+            {quotaSaved && (
+              <p className="text-sm text-ok bg-ok-surface border border-ok/30 rounded-xl px-3 py-2 mb-2" role="status">
+                {quotaSaved}
+              </p>
+            )}
+            {quotaSaveError && (
+              <p className="text-sm text-danger bg-danger-surface border border-danger/30 rounded-xl px-3 py-2 mb-2" role="alert">
+                {quotaSaveError}
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.values(TEST_CONFIG).map(t => {
-                // online count excludes walkin, total includes all
-                const booked = quotaTotals[t.label] ?? quotaCounts[t.label] ?? 0
+                const booked = quotaCounts[t.label] ?? 0
                 const walkins = quotaWalkins[t.label] ?? 0
-                // total limit vs online share (half is for walkin)
-                const onlineLimit = onlineLimitFor(t.limit)
-                const onlineBooked = quotaCounts[t.label] ?? Math.max(0, booked - walkins)
-                const onlineAvailable = Math.max(0, onlineLimit - onlineBooked)
-                const available = Math.max(0, t.limit - booked)
-                const held = t.limit - onlineLimit
-                const heldLeft = Math.max(0, held - walkins)
-                const pct = onlineLimit > 0 ? Math.round((onlineAvailable / onlineLimit) * 100) : 0
+                const total = quotaTotals[t.label] ?? booked + walkins
+                const capacity = quotaCapacities[t.label] ?? 0
+                const onlineAvailable =
+                  quotaAvailable[t.label] ?? Math.max(0, capacity - booked)
+                const pct = capacity > 0
+                  ? Math.round((onlineAvailable / capacity) * 100)
+                  : 0
                 const onlineFull = onlineAvailable <= 0
+                const saving = quotaSaving === t.label
                 return (
                   <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-danger/30 bg-danger-surface/60' : 'border-line bg-white'}`}>
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="font-semibold text-navy truncate" title={t.label}>{t.label}</span>
-                      <span className="flex shrink-0 items-center gap-1.5">
-                        {onlineFull ? (
-                          <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
-                            Online Full
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-soft text-brand border border-brand/20 tabular-nums">
-                            {onlineAvailable} online left
-                          </span>
-                        )}
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border tabular-nums ${heldLeft <= 0 ? 'bg-danger-surface text-danger border-danger/30' : 'bg-ok-surface text-ok border-ok/30'}`}>
-                          {heldLeft} walk-in left
+                      {onlineFull ? (
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
+                          No online slots
                         </span>
-                      </span>
+                      ) : (
+                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-soft text-brand border border-brand/20 tabular-nums">
+                          {onlineAvailable} online left
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-end gap-2">
+                      <label className="flex-1 min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                          Maximum online
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={MAX_ONLINE_CAPACITY}
+                          step={1}
+                          inputMode="numeric"
+                          value={quotaDrafts[t.label] ?? ''}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setQuotaDrafts(prev => ({ ...prev, [t.label]: value }))
+                            setQuotaSaved('')
+                            setQuotaSaveError('')
+                          }}
+                          aria-label={`Maximum online capacity for ${t.label}`}
+                          className="mt-1 w-full px-2.5 py-1.5 border border-line rounded-lg text-ink bg-white text-sm tabular-nums outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void saveCapacity(t.label)}
+                        disabled={saving || quotaLoading}
+                        className="px-3 py-2 text-xs font-bold rounded-lg bg-brand text-white hover:bg-brand-dark transition-colors disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed"
+                      >
+                        {saving ? 'Saving…' : 'Save'}
+                      </button>
                     </div>
                     <div className="mt-1.5 text-xs text-muted tabular-nums">
-                      Total {available}/{t.limit} left.
+                      Online booked {booked} · Walk-ins {walkins} · Total {total}
                     </div>
+                    {capacity < booked && (
+                      <p className="mt-1 text-[11px] font-semibold text-warn">
+                        Capacity is below current online bookings; no new slots are available.
+                      </p>
+                    )}
                     <div className="mt-2 h-2 rounded-full bg-line/60 overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-danger' : pct <= 25 ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
                     </div>

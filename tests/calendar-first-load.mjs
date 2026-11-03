@@ -107,6 +107,26 @@ async function markFirstCell(page, kind) {
 
 async function enableApiStubs(page) {
   const quotaRequests = []
+  let fullCbc = false
+  const capacities = {
+    'CBC': 50,
+    'Chest X-Ray': 50,
+    'Glucose (FBS)': 25,
+    'OGTT': 1,
+    'Lipid Profile': 25,
+    'Creatinine (CREA)': 25,
+    'Uric Acid (URIC)': 25,
+    'BUN': 25,
+    'Urinalysis': 50,
+    'Stool Exam (S/E)': 15,
+    'HBsAg': 25,
+    'Syphilis': 25,
+    'HIV Test': 25,
+    'Pregnancy Test': 25,
+    'Gram Staining': 25,
+    'Pap Smear': 5,
+    'ECG': 15,
+  }
   page.on('Fetch.requestPaused', async params => {
     const url = params.request.url
     if (url.includes('/api/blocked-dates')) {
@@ -120,11 +140,14 @@ async function enableApiStubs(page) {
     }
     if (url.includes('/api/quotas')) {
       quotaRequests.push(url)
+      const payload = fullCbc
+        ? { counts: { 'CBC': 50 }, capacities, available: { 'CBC': 0 } }
+        : { counts: {}, capacities }
       await page.send('Fetch.fulfillRequest', {
         requestId: params.requestId,
         responseCode: 200,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
-        body: Buffer.from(JSON.stringify({ counts: {} })).toString('base64'),
+        body: Buffer.from(JSON.stringify(payload)).toString('base64'),
       })
       return
     }
@@ -136,7 +159,7 @@ async function enableApiStubs(page) {
       { urlPattern: '*/api/quotas*', requestStage: 'Request' },
     ],
   })
-  return quotaRequests
+  return { quotaRequests, setFullCbc: value => { fullCbc = value } }
 }
 
 async function readState(page) {
@@ -190,7 +213,7 @@ async function main() {
     browser = await launchBrowser()
     page = await browser.newPage()
     await page.enable()
-    const quotaRequests = await enableApiStubs(page)
+    const { quotaRequests, setFullCbc } = await enableApiStubs(page)
 
     console.log(`Browser: ${browser.version.Browser}`)
     console.log(`Server:  ${server.baseUrl}`)
@@ -277,6 +300,31 @@ async function main() {
     await page.click(reloadEnabled.selector)
     await waitForInputValue(page, displayDate(Number(reloadEnabled.text), reloadGrid.month, reloadGrid.year))
     pass('calendar remains functional after a full-page refresh')
+
+    setFullCbc(true)
+    await page.reload()
+    await page.waitFor('window.__choReady === true', 30000, 'hydration for capacity UI')
+    await page.waitFor(`document.querySelectorAll('button[role="gridcell"]:not([disabled])').length > 0`, 5000, 'enabled dates for capacity UI')
+    const capacityGrid = parseGridLabel(await page.evaluate(`document.querySelector('[role="grid"]')?.getAttribute('aria-label')`))
+    const capacityDate = await markFirstCell(page, 'enabled')
+    if (!capacityDate) throw new Error('No enabled date for the capacity UI check.')
+    await page.click(capacityDate.selector)
+    await waitForInputValue(page, displayDate(Number(capacityDate.text), capacityGrid.month, capacityGrid.year))
+    await page.waitFor(
+      `document.body.innerText.includes('No online slots available for this test.')`,
+      5000,
+      'patient no-capacity message'
+    )
+    const cbcDisabled = await page.evaluate(`(() => {
+      const label = Array.from(document.querySelectorAll('label')).find(label => {
+        const name = label.querySelector('span');
+        return name && name.textContent.trim() === 'CBC';
+      });
+      const input = label?.querySelector('input[type="checkbox"]');
+      return Boolean(input?.disabled);
+    })()`)
+    if (!cbcDisabled) throw new Error('CBC remained selectable at zero online capacity.')
+    pass('full online capacity shows the patient message and disables the test')
 
     const staticFailures = page.staticAssetFailures()
     if (staticFailures.length > 0) {

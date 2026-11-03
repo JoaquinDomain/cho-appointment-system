@@ -1,7 +1,9 @@
 -- CHO Laboratory Appointment System — MySQL 8.0 schema
 -- Converted from d1/schema.sql (Cloudflare D1 / SQLite).
 -- Apply with: mysql -h <host> -P <port> -u <user> -p <database> < ./mysql/schema.sql
--- Fresh start: tables are created empty. Admins are seeded via scripts/seed-admin.mjs.
+-- Fresh start: appointments/admin tables are created empty; admins are seeded
+-- via scripts/seed-admin.mjs. test_capacities is seeded with the previous
+-- hardcoded online limits so availability does not change on deploy.
 --
 -- Conversion notes (SQLite -> MySQL):
 --   * Indexes are declared inline in CREATE TABLE so the file stays idempotent.
@@ -91,3 +93,45 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
   created_by VARCHAR(254) NOT NULL DEFAULT '', -- admin who blocked it (audit)
   PRIMARY KEY (blocked_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Admin-managed daily online capacity, one row per laboratory test label.
+-- The label matches TEST_CONFIG in src/lib/types.ts. Availability is always
+-- calculated as max_online_capacity minus the online, non-cancelled
+-- appointments on the selected appointment_date; it is never stored.
+-- Existing installations can apply mysql/migrate_test_capacities.sql instead
+-- of re-running this whole file. The INSERT IGNORE below only adds missing
+-- tests, so re-running it never overwrites an admin's saved capacity.
+CREATE TABLE IF NOT EXISTS test_capacities (
+  test_label VARCHAR(120) NOT NULL,
+  max_online_capacity INT UNSIGNED NOT NULL,
+  updated_at VARCHAR(32) NOT NULL,
+  updated_by VARCHAR(254) NOT NULL DEFAULT '',
+  PRIMARY KEY (test_label),
+  CONSTRAINT chk_test_capacities_max
+    CHECK (max_online_capacity BETWEEN 0 AND 100000)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Initial values preserve the previous hardcoded online share (half of each
+-- test's daily limit, full limit for online-only ECG) so deploying this
+-- feature does not change patient-facing availability. The application uses
+-- the MySQL rows as the source of truth after this one-time seed.
+INSERT IGNORE INTO test_capacities
+  (test_label, max_online_capacity, updated_at, updated_by)
+VALUES
+  ('CBC', 50, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Chest X-Ray', 50, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Glucose (FBS)', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('OGTT', 1, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Lipid Profile', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Creatinine (CREA)', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Uric Acid (URIC)', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('BUN', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Urinalysis', 50, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Stool Exam (S/E)', 15, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('HBsAg', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Syphilis', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('HIV Test', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Pregnancy Test', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Gram Staining', 25, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('Pap Smear', 5, '2026-01-01T00:00:00.000Z', 'schema-seed'),
+  ('ECG', 15, '2026-01-01T00:00:00.000Z', 'schema-seed');

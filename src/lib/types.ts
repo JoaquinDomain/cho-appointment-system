@@ -57,6 +57,30 @@ export const TEST_CONFIG = {
   ecg: { label: 'ECG', limit: 15, requiresFasting: false },
 } as const
 
+// Upper bound for an admin-configured daily online capacity. It is a sanity
+// limit, not a business capacity: the real value lives in MySQL.
+export const MAX_ONLINE_CAPACITY = 100_000
+
+/**
+ * Parse an admin capacity input. Accepts a non-negative integer number or a
+ * plain digit string. Rejects negatives, decimals, exponents, booleans,
+ * whitespace-only values, arrays/objects and anything above the sanity limit.
+ */
+export function parseOnlineCapacity(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 && value <= MAX_ONLINE_CAPACITY
+      ? value
+      : null
+  }
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (!/^\d+$/.test(text)) return null
+    const parsed = Number(text)
+    return Number.isSafeInteger(parsed) && parsed <= MAX_ONLINE_CAPACITY ? parsed : null
+  }
+  return null
+}
+
 // ECG is Wednesday afternoon only (1-4 PM), checked in validation.
 export const ECG_LABEL = TEST_CONFIG.ecg.label
 export const ECG_WEEKDAY = 3 // 0 = Sunday … 6 = Saturday; 3 = Wednesday
