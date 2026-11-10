@@ -57,8 +57,8 @@ export const TEST_CONFIG = {
   ecg: { label: 'ECG', limit: 15, requiresFasting: false },
 } as const
 
-// Upper bound for an admin-configured daily online capacity. It is a sanity
-// limit, not a business capacity: the real value lives in MySQL.
+// Upper bound for an admin-configured daily capacity (online or walk-in). It
+// is a sanity limit, not a business capacity: the real value lives in MySQL.
 export const MAX_ONLINE_CAPACITY = 100_000
 
 /**

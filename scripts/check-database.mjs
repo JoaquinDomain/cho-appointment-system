@@ -64,7 +64,19 @@ async function checkDatabase() {
       process.exitCode = 1
     } else {
       const [capacityCount] = await pool.query('SELECT COUNT(*) AS count FROM test_capacities')
-      console.log(`test_capacities rows: ${capacityCount[0].count}\n`)
+      console.log(`test_capacities rows: ${capacityCount[0].count}`)
+      const [walkinColumn] = await pool.query(
+        'SELECT column_name AS name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?',
+        ['test_capacities', 'max_walkin_capacity']
+      )
+      if (walkinColumn.length === 0) {
+        console.log(
+          'test_capacities.max_walkin_capacity column NOT found - apply mysql/migrate_test_capacities.sql\n'
+        )
+        process.exitCode = 1
+      } else {
+        console.log('test_capacities walk-in capacity column exists\n')
+      }
     }
 
     // Check admin users

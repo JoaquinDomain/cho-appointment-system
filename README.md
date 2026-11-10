@@ -103,10 +103,10 @@ The system uses MySQL tables (see `mysql/schema.sql`):
 - `admin_sessions`: hashed opaque session tokens with expiry
 - `blocked_dates`: days closed by an admin (`blocked_date` PK, optional reason,
   who blocked it and when) — refuses new online bookings and walk-ins only
-- `test_capacities`: admin-managed daily online capacity per laboratory test
-  (`test_label` PK, capacity, last editor/time). Availability is calculated
-  from these rows and the non-cancelled online appointments for the selected
-  date; walk-ins are tracked separately.
+- `test_capacities`: admin-managed daily online and walk-in capacity per
+  laboratory test (`test_label` PK, both capacities, last editor/time).
+  Availability is calculated from these rows and the non-cancelled
+  appointments for the selected date, split by booking source.
 
 ## Security
 

@@ -97,8 +97,8 @@ owner aware:
 
 ```bash
 # Existing installation: additive capacity migration (safe before the new code).
-# It only creates test_capacities and seeds missing tests; it never changes
-# appointments or overwrites an admin's saved capacity.
+# It creates test_capacities or adds the walk-in capacity column, seeds missing
+# tests, and never changes appointments or overwrites an admin's saved capacity.
 mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment \
   < ./mysql/migrate_test_capacities.sql
 
@@ -116,7 +116,7 @@ Take a database backup before the capacity migration and confirm the new table:
 
 ```bash
 mysql -h 127.0.0.1 -u <dbuser> -p bcho_lab_appointment \
-  -e "SELECT test_label, max_online_capacity FROM test_capacities ORDER BY test_label;"
+  -e "SELECT test_label, max_online_capacity, max_walkin_capacity FROM test_capacities ORDER BY test_label;"
 ```
 
 Use the approved secret-entry method for the admin password; do not paste it

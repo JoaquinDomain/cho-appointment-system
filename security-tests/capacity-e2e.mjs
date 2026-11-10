@@ -1,4 +1,4 @@
-// Admin-managed online capacity E2E test.
+// Admin-managed online + walk-in capacity E2E test.
 //
 // Boots throwaway MySQL 8.0, applies ./mysql/schema.sql, starts the production
 // Next.js server, and verifies the capacity feature end to end:
@@ -182,6 +182,18 @@ async function main() {
       capacityTables.length === 1 && Number(seeded[0].c) === 17,
       `rows=${seeded[0].c}`
     )
+    const [walkinColumn] = await conn.query(
+      "SELECT column_name AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_capacities' AND column_name = 'max_walkin_capacity'"
+    )
+    const [seededWalkin] = await conn.execute(
+      'SELECT max_walkin_capacity FROM test_capacities WHERE test_label = ?',
+      ['CBC']
+    )
+    add(
+      'schema seeds the walk-in capacity column with the previous half split',
+      walkinColumn.length === 1 && Number(seededWalkin[0]?.max_walkin_capacity) === 50,
+      `columns=${walkinColumn.length} cbc=${seededWalkin[0]?.max_walkin_capacity}`
+    )
 
     const env = {
       ...process.env,
@@ -203,8 +215,9 @@ async function main() {
     let json = await res.json().catch(() => ({}))
     add(
       'public quotas expose seeded capacities and availability',
-      res.status === 200 && json.capacities?.CBC === 50 && json.available?.CBC === 50,
-      `status=${res.status} cbc=${json.capacities?.CBC} available=${json.available?.CBC}`
+      res.status === 200 && json.capacities?.CBC === 50 && json.available?.CBC === 50 &&
+        json.walkinCapacities?.CBC === 50 && json.walkinAvailable?.CBC === 50,
+      `status=${res.status} cbc=${json.capacities?.CBC} available=${json.available?.CBC} walkin=${json.walkinCapacities?.CBC}`
     )
 
     res = await fetch(`${BASE}/api/admin/capacities?date=${DATE_A}`, { headers: { 'X-Forwarded-For': nextIp() } })
@@ -233,8 +246,9 @@ async function main() {
     add(
       'GET /api/admin/capacities (admin) -> capacity + counted + available per test',
       res.status === 200 && cbcSummary?.maxOnlineCapacity === 50 &&
+        cbcSummary?.maxWalkinCapacity === 50 &&
         cbcSummary?.counted === 0 && cbcSummary?.available === 50,
-      `status=${res.status} tests=${(json.tests || []).length}`
+      `status=${res.status} tests=${(json.tests || []).length} walkin=${cbcSummary?.maxWalkinCapacity}`
     )
 
     const patch = async (body) => {
@@ -248,18 +262,34 @@ async function main() {
 
     let patched = await patch({ test_label: 'CBC', max_online_capacity: 2, date: DATE_A })
     add(
-      'admin saves CBC capacity 2 -> 200 + updated summary',
-      patched.res.status === 200 && patched.json.test?.maxOnlineCapacity === 2,
-      `status=${patched.res.status} capacity=${patched.json.test?.maxOnlineCapacity}`
+      'admin saves CBC online capacity 2 -> 200 + updated summary',
+      patched.res.status === 200 && patched.json.test?.maxOnlineCapacity === 2 &&
+        patched.json.test?.maxWalkinCapacity === 50,
+      `status=${patched.res.status} capacity=${patched.json.test?.maxOnlineCapacity} walkin=${patched.json.test?.maxWalkinCapacity}`
     )
     const [audit] = await conn.execute(
-      'SELECT max_online_capacity, updated_by FROM test_capacities WHERE test_label = ?',
+      'SELECT max_online_capacity, max_walkin_capacity, updated_by FROM test_capacities WHERE test_label = ?',
       ['CBC']
     )
     add(
-      'capacity persists in MySQL with the admin audit email',
-      Number(audit[0]?.max_online_capacity) === 2 && audit[0]?.updated_by === adminEmail,
-      `capacity=${audit[0]?.max_online_capacity} by=${audit[0]?.updated_by}`
+      'capacity persists in MySQL and omitted walk-in keeps its saved value',
+      Number(audit[0]?.max_online_capacity) === 2 &&
+        Number(audit[0]?.max_walkin_capacity) === 50 &&
+        audit[0]?.updated_by === adminEmail,
+      `capacity=${audit[0]?.max_online_capacity} walkin=${audit[0]?.max_walkin_capacity} by=${audit[0]?.updated_by}`
+    )
+    patched = await patch({
+      test_label: 'CBC',
+      max_online_capacity: 2,
+      max_walkin_capacity: 4,
+      date: DATE_A,
+    })
+    add(
+      'admin saves online and walk-in capacity together -> 200 + updated summary',
+      patched.res.status === 200 && patched.json.test?.maxOnlineCapacity === 2 &&
+        patched.json.test?.maxWalkinCapacity === 4 &&
+        patched.json.walkinCapacities?.CBC === 4,
+      `status=${patched.res.status} online=${patched.json.test?.maxOnlineCapacity} walkin=${patched.json.test?.maxWalkinCapacity}`
     )
     res = await fetch(`${BASE}/api/quotas?date=${DATE_A}`, { headers: { 'X-Forwarded-For': nextIp() } })
     json = await res.json().catch(() => ({}))
@@ -272,6 +302,8 @@ async function main() {
     for (const [name, body] of [
       ['negative capacity -> 400', { test_label: 'CBC', max_online_capacity: -1 }],
       ['decimal capacity -> 400', { test_label: 'CBC', max_online_capacity: 1.5 }],
+      ['negative walk-in capacity -> 400', { test_label: 'CBC', max_online_capacity: 2, max_walkin_capacity: -1 }],
+      ['decimal walk-in capacity -> 400', { test_label: 'CBC', max_online_capacity: 2, max_walkin_capacity: 1.5 }],
       ['unknown test -> 400', { test_label: 'Not A Test', max_online_capacity: 1 }],
       ['missing capacity -> 400', { test_label: 'CBC' }],
     ]) {
@@ -343,6 +375,38 @@ async function main() {
       `online=${json.counts?.CBC} walkin=${json.walkinCounts?.CBC} available=${json.available?.CBC}`
     )
 
+    patched = await patch({
+      test_label: 'BUN',
+      max_online_capacity: 5,
+      max_walkin_capacity: 1,
+      date: DATE_A,
+    })
+    add(
+      'admin configures a walk-in capacity for BUN',
+      patched.res.status === 200 && patched.json.test?.maxWalkinCapacity === 1,
+      `status=${patched.res.status} walkin=${patched.json.test?.maxWalkinCapacity}`
+    )
+    const postWalkin = async (tests) => {
+      const r = await fetch(`${BASE}/api/admin/walkins`, {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify(booking({ appointment_date: DATE_A, selected_tests: tests })),
+      })
+      return { res: r, json: await r.json().catch(() => ({})) }
+    }
+    let walkinFit = await postWalkin(['BUN'])
+    add(
+      'walk-in within configured walk-in capacity -> 201',
+      walkinFit.res.status === 201,
+      `status=${walkinFit.res.status}`
+    )
+    walkinFit = await postWalkin(['BUN'])
+    add(
+      'walk-in over configured walk-in capacity -> 400',
+      walkinFit.res.status === 400 && /BUN/.test(walkinFit.json.error || ''),
+      `status=${walkinFit.res.status} error=${walkinFit.json.error}`
+    )
+
     const [pending] = await conn.execute(
       "SELECT id FROM appointments WHERE appointment_date = ? AND selected_tests = ? AND source = 'online' AND status = 'pending' LIMIT 1",
       [DATE_A, JSON.stringify(['CBC'])]
@@ -411,14 +475,16 @@ async function main() {
 
     await conn.query(readFileSync(resolve(process.cwd(), 'mysql/migrate_test_capacities.sql'), 'utf8'))
     const [afterMigration] = await conn.execute(
-      'SELECT max_online_capacity FROM test_capacities WHERE test_label = ?',
+      'SELECT max_online_capacity, max_walkin_capacity FROM test_capacities WHERE test_label = ?',
       ['CBC']
     )
     const [afterRows] = await conn.query('SELECT COUNT(*) AS c FROM test_capacities')
     add(
       're-running the migration is idempotent and never overwrites admin values',
-      Number(afterMigration[0]?.max_online_capacity) === 7 && Number(afterRows[0].c) === 17,
-      `cbc=${afterMigration[0]?.max_online_capacity} rows=${afterRows[0].c}`
+      Number(afterMigration[0]?.max_online_capacity) === 7 &&
+        Number(afterMigration[0]?.max_walkin_capacity) === 4 &&
+        Number(afterRows[0].c) === 17,
+      `cbc=${afterMigration[0]?.max_online_capacity} walkin=${afterMigration[0]?.max_walkin_capacity} rows=${afterRows[0].c}`
     )
 
     await stopServer()
@@ -429,8 +495,9 @@ async function main() {
     json = await res.json().catch(() => ({}))
     add(
       'capacity survives an application restart',
-      res.status === 200 && json.capacities?.CBC === 7,
-      `status=${res.status} cbc=${json.capacities?.CBC}`
+      res.status === 200 && json.capacities?.CBC === 7 &&
+        json.walkinCapacities?.CBC === 4,
+      `status=${res.status} cbc=${json.capacities?.CBC} walkin=${json.walkinCapacities?.CBC}`
     )
 
     res = await fetch(`${BASE}/api/admin/capacities?date=not-a-date`, { headers: auth })
@@ -451,6 +518,41 @@ async function main() {
         Number(afterMigrationRows[0].c) === 17 &&
         Number(migrationCbc[0]?.max_online_capacity) === 50,
       `appointments=${afterMigrationAppointments[0].c} rows=${afterMigrationRows[0].c}`
+    )
+
+    // Upgrade an old-shape table that already has admin-saved online values.
+    await conn.query('DROP TABLE test_capacities')
+    await conn.query(
+      `CREATE TABLE test_capacities (
+        test_label VARCHAR(120) NOT NULL,
+        max_online_capacity INT UNSIGNED NOT NULL,
+        updated_at VARCHAR(32) NOT NULL,
+        updated_by VARCHAR(254) NOT NULL DEFAULT '',
+        PRIMARY KEY (test_label),
+        CONSTRAINT chk_test_capacities_max
+          CHECK (max_online_capacity BETWEEN 0 AND 100000)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`
+    )
+    await conn.execute(
+      'INSERT INTO test_capacities (test_label, max_online_capacity, updated_at, updated_by) VALUES (?, ?, ?, ?)',
+      ['CBC', 7, '2026-01-01T00:00:00.000Z', 'admin@example.com']
+    )
+    await conn.query(readFileSync(resolve(process.cwd(), 'mysql/migrate_test_capacities.sql'), 'utf8'))
+    const [oldShapeColumn] = await conn.query(
+      "SELECT column_name AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'test_capacities' AND column_name = 'max_walkin_capacity'"
+    )
+    const [oldShapeCbc] = await conn.execute(
+      'SELECT max_online_capacity, max_walkin_capacity FROM test_capacities WHERE test_label = ?',
+      ['CBC']
+    )
+    const [oldShapeRows] = await conn.query('SELECT COUNT(*) AS c FROM test_capacities')
+    add(
+      'migration adds the walk-in column to an old table without resetting online values',
+      oldShapeColumn.length === 1 &&
+        Number(oldShapeCbc[0]?.max_online_capacity) === 7 &&
+        Number(oldShapeCbc[0]?.max_walkin_capacity) === 50 &&
+        Number(oldShapeRows[0].c) === 17,
+      `columns=${oldShapeColumn.length} online=${oldShapeCbc[0]?.max_online_capacity} walkin=${oldShapeCbc[0]?.max_walkin_capacity} rows=${oldShapeRows[0].c}`
     )
 
     const [appointmentCount] = await conn.query('SELECT COUNT(*) AS c FROM appointments')

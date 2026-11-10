@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, AlertCircle, UserPlus } from 'lucide-react'
 import { HEALTH_FACILITIES, TEST_CONFIG, isOnlineOnly, unavailableDateReason } from '@/lib/types'
 
@@ -36,9 +36,44 @@ export default function WalkinModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [createdId, setCreatedId] = useState('')
+  const [walkinAvailable, setWalkinAvailable] = useState<Record<string, number>>({})
+  const [walkinCapacities, setWalkinCapacities] = useState<Record<string, number>>({})
 
   // same closed-day rule as online booking
   const closedDayReason = date ? unavailableDateReason(date) : null
+
+  // show the admin-configured walk-in slots for the selected date
+  useEffect(() => {
+    if (!date) return
+    let ignore = false
+    async function loadQuotas() {
+      try {
+        const res = await fetch(`/api/quotas?date=${encodeURIComponent(date)}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (ignore) return
+        const available: Record<string, number> = data.walkinAvailable || {}
+        const capacities: Record<string, number> = data.walkinCapacities || {}
+        setWalkinAvailable(available)
+        setWalkinCapacities(capacities)
+        setTests(prev => {
+          const next = prev.filter(label => {
+            const left = available[label]
+            return typeof left === 'number' ? left > 0 : true
+          })
+          return next.length === prev.length ? prev : next
+        })
+      } catch (err) {
+        console.error('Error fetching walk-in capacity:', err)
+      }
+    }
+    void loadQuotas()
+    return () => {
+      ignore = true
+    }
+  }, [date])
 
   const toggleTest = (label: string) => {
     setTests(prev => (prev.includes(label) ? prev.filter(t => t !== label) : [...prev, label]))
@@ -175,11 +210,23 @@ export default function WalkinModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2 max-h-56 overflow-y-auto border border-line rounded-xl p-2">
                 {filtered.map(c => {
                   const blocked = isOnlineOnly(c.label)
+                  const slotsLeft = walkinAvailable[c.label]
+                  const capacity = walkinCapacities[c.label]
+                  const noSlots =
+                    !blocked && typeof slotsLeft === 'number' && slotsLeft <= 0
+                  const disabled = blocked || noSlots
+                  const testNote = blocked
+                    ? 'online only'
+                    : typeof slotsLeft === 'number'
+                      ? `${slotsLeft} walk-in left`
+                      : typeof capacity === 'number'
+                        ? `walk-in cap ${capacity}`
+                        : ''
                   return (
-                  <label key={c.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-ink ${blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft cursor-pointer'}`}>
-                    <input type="checkbox" checked={tests.includes(c.label)} disabled={blocked} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-brand disabled:cursor-not-allowed" />
+                  <label key={c.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-ink ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft cursor-pointer'}`}>
+                    <input type="checkbox" checked={tests.includes(c.label)} disabled={disabled} onChange={() => toggleTest(c.label)} className="w-4 h-4 accent-brand disabled:cursor-not-allowed" />
                     <span className="truncate">{c.label}</span>
-                    <span className="ml-auto text-[11px] text-faint tabular-nums">{blocked ? 'online only' : `cap ${c.limit}`}</span>
+                    <span className="ml-auto text-[11px] text-faint tabular-nums">{testNote}</span>
                   </label>
                   )
                 })}
@@ -201,7 +248,7 @@ export default function WalkinModal({
             >
               {submitting ? 'Registering…' : 'Register Walk-in (Confirmed)'}
             </button>
-            <p className="text-[11px] text-faint text-center">Walk-ins use the held-back half of daily capacity and are marked Confirmed.</p>
+            <p className="text-[11px] text-faint text-center">Walk-ins use the daily walk-in capacity set in Daily Capacity and are marked Confirmed.</p>
           </form>
         )}
       </div>

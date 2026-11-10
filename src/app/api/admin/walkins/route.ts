@@ -4,7 +4,8 @@ import { dbQuery, dbRun } from '@/lib/db/mysql'
 import { requireAdmin } from '@/lib/auth/session'
 import { validateAppointmentInput } from '@/lib/validation'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
-import { TEST_CONFIG, onlineLimitFor, isOnlineOnly } from '@/lib/types'
+import { isOnlineOnly } from '@/lib/types'
+import { getWalkinTestCapacities } from '@/lib/test-capacities'
 import { isMissingStatusColumn } from '@/lib/status-column'
 import { isMissingSourceColumn, ensureSourceColumn } from '@/lib/source-column'
 import { isMissingContactColumn, ensureContactColumn } from '@/lib/contact-column'
@@ -13,8 +14,8 @@ import { countBookedTestsBySource, type QuotaRow } from '@/lib/quota-count'
 import { getDateBlockNote } from '@/lib/blocked-dates'
 
 // POST /api/admin/walkins, admin only. Patient is here in person.
-// No turnstile, login is enough. Walkin uses the reserved half,
-// so check is against total limit per test.
+// No turnstile, login is enough. Walk-ins use the admin-configured
+// daily walk-in capacity for each test.
 export async function POST(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) {
@@ -102,26 +103,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to validate test quotas.' }, { status: 500 })
   }
 
-  // walkin must fit in reserved half and in total limit
+  // walkin must fit in the admin-configured walk-in capacity per test
+  let walkinCapacities: Record<string, number>
+  try {
+    walkinCapacities = await getWalkinTestCapacities()
+  } catch (e) {
+    console.error('Walk-in capacity lookup failed:', e)
+    return NextResponse.json({ error: 'Failed to validate test capacities.' }, { status: 500 })
+  }
+
   const split = countBookedTestsBySource(existing)
-  const testConfigs = Object.values(TEST_CONFIG)
   const overLimit: string[] = []
   for (const label of parsed.data.selected_tests) {
-    const config = testConfigs.find(t => t.label === label)
-    if (!config) continue
-    const heldLimit = config.limit - onlineLimitFor(config.limit)
+    const walkinCapacity = walkinCapacities[label] ?? 0
     const walkinBooked = split.walkin[label] || 0
-    const totalBooked = split.total[label] || 0
-    if (walkinBooked >= heldLimit) {
-      overLimit.push(`${label} (Walk-in limit: ${heldLimit}, Booked: ${walkinBooked})`)
-    } else if (totalBooked >= config.limit) {
-      overLimit.push(`${label} (Daily limit: ${config.limit}, Booked: ${totalBooked})`)
+    if (walkinBooked >= walkinCapacity) {
+      overLimit.push(
+        `${label} (Walk-in capacity: ${walkinCapacity}, Booked: ${walkinBooked})`
+      )
     }
   }
   if (overLimit.length > 0) {
     return NextResponse.json(
       {
-        error: `Daily capacity for ${parsed.data.appointment_date} is full, including walk-in slots: ${overLimit.join(', ')}.`,
+        error: `Daily walk-in capacity for ${parsed.data.appointment_date} is full: ${overLimit.join(', ')}.`,
       },
       { status: 400 }
     )

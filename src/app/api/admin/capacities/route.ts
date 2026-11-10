@@ -10,6 +10,8 @@ import {
 } from '@/lib/types'
 import {
   getCapacitySnapshot,
+  getWalkinTestCapacities,
+  legacyDefaultWalkinCapacity,
   setTestCapacity,
   todayIso,
 } from '@/lib/test-capacities'
@@ -41,8 +43,8 @@ function readDate(value: string | null): string | null {
 }
 
 // GET /api/admin/capacities[?date=YYYY-MM-DD]
-// Returns the configured online capacity, counted online appointments and
-// remaining online slots for every laboratory test on one appointment date.
+// Returns the configured online and walk-in capacity, counted appointments and
+// remaining slots for every laboratory test on one appointment date.
 export async function GET(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -69,9 +71,10 @@ export async function GET(req: Request) {
 }
 
 // PATCH /api/admin/capacities
-// body: { test_label: "CBC", max_online_capacity: 20 }
-// Also accepts { test, capacity } as a convenience. This is the only endpoint
-// that changes capacity, and it requires a valid admin session.
+// body: { test_label: "CBC", max_online_capacity: 20, max_walkin_capacity: 10 }
+// Also accepts { test, capacity } as a convenience. max_walkin_capacity is
+// optional; when omitted the saved walk-in capacity is kept. This is the only
+// endpoint that changes capacity, and it requires a valid admin session.
 export async function PATCH(req: Request) {
   const auth = await requireAdmin(req)
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -95,6 +98,11 @@ export async function PATCH(req: Request) {
     record.online_capacity ??
     record.capacity ??
     record.max_capacity
+  const rawWalkinCapacity =
+    record.max_walkin_capacity ??
+    record.maxWalkinCapacity ??
+    record.walkin_capacity ??
+    record.walkinCapacity
 
   if (typeof rawLabel !== 'string' || rawLabel.trim() === '') {
     return NextResponse.json({ error: 'Test label is required.' }, { status: 400 })
@@ -108,10 +116,23 @@ export async function PATCH(req: Request) {
   if (capacity === null) {
     return NextResponse.json(
       {
-        error: `Capacity must be a whole number from 0 to ${MAX_ONLINE_CAPACITY}.`,
+        error: `Online capacity must be a whole number from 0 to ${MAX_ONLINE_CAPACITY}.`,
       },
       { status: 400 }
     )
+  }
+
+  let walkinCapacity: number | null = null
+  if (rawWalkinCapacity !== undefined) {
+    walkinCapacity = parseOnlineCapacity(rawWalkinCapacity)
+    if (walkinCapacity === null) {
+      return NextResponse.json(
+        {
+          error: `Walk-in capacity must be a whole number from 0 to ${MAX_ONLINE_CAPACITY}.`,
+        },
+        { status: 400 }
+      )
+    }
   }
 
   const dateParam = typeof record.date === 'string' ? record.date.trim() : ''
@@ -123,7 +144,11 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    await setTestCapacity(label, capacity, auth.email)
+    if (walkinCapacity === null) {
+      const saved = await getWalkinTestCapacities()
+      walkinCapacity = saved[label] ?? legacyDefaultWalkinCapacity(label)
+    }
+    await setTestCapacity(label, capacity, walkinCapacity, auth.email)
     const date = dateParam || todayIso()
     const snapshot = await getCapacitySnapshot(date)
     return NextResponse.json(
@@ -133,6 +158,7 @@ export async function PATCH(req: Request) {
         date,
         test: snapshot.tests.find((test) => test.label === label),
         capacities: snapshot.capacities,
+        walkinCapacities: snapshot.walkinCapacities,
       },
       { headers: { 'Cache-Control': 'no-store' } }
     )

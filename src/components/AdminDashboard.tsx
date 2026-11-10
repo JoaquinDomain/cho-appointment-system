@@ -61,8 +61,11 @@ export default function AdminDashboard() {
   const [quotaWalkins, setQuotaWalkins] = useState<Record<string, number>>({})
   const [quotaTotals, setQuotaTotals] = useState<Record<string, number>>({})
   const [quotaCapacities, setQuotaCapacities] = useState<Record<string, number>>({})
+  const [quotaWalkinCapacities, setQuotaWalkinCapacities] = useState<Record<string, number>>({})
   const [quotaAvailable, setQuotaAvailable] = useState<Record<string, number>>({})
+  const [quotaWalkinAvailable, setQuotaWalkinAvailable] = useState<Record<string, number>>({})
   const [quotaDrafts, setQuotaDrafts] = useState<Record<string, string>>({})
+  const [quotaWalkinDrafts, setQuotaWalkinDrafts] = useState<Record<string, string>>({})
   const [quotaSaving, setQuotaSaving] = useState('')
   const [quotaSaved, setQuotaSaved] = useState('')
   const [quotaSaveError, setQuotaSaveError] = useState('')
@@ -163,14 +166,25 @@ export default function AdminDashboard() {
       }
       const capacities =
         (json as { capacities?: Record<string, number> }).capacities ?? {}
+      const walkinCapacities =
+        (json as { walkinCapacities?: Record<string, number> }).walkinCapacities ?? {}
       setQuotaCounts((json as { counts?: Record<string, number> }).counts ?? {})
       setQuotaWalkins((json as { walkinCounts?: Record<string, number> }).walkinCounts ?? {})
       setQuotaTotals((json as { totalCounts?: Record<string, number> }).totalCounts ?? {})
       setQuotaCapacities(capacities)
+      setQuotaWalkinCapacities(walkinCapacities)
       setQuotaAvailable((json as { available?: Record<string, number> }).available ?? {})
+      setQuotaWalkinAvailable(
+        (json as { walkinAvailable?: Record<string, number> }).walkinAvailable ?? {}
+      )
       setQuotaDrafts(
         Object.fromEntries(
           Object.entries(capacities).map(([label, value]) => [label, String(value)])
+        )
+      )
+      setQuotaWalkinDrafts(
+        Object.fromEntries(
+          Object.entries(walkinCapacities).map(([label, value]) => [label, String(value)])
         )
       )
     } catch (err) {
@@ -187,10 +201,11 @@ export default function AdminDashboard() {
 
   const saveCapacity = async (label: string) => {
     const capacity = parseOnlineCapacity(quotaDrafts[label])
-    if (capacity === null) {
+    const walkinCapacity = parseOnlineCapacity(quotaWalkinDrafts[label])
+    if (capacity === null || walkinCapacity === null) {
       setQuotaSaved('')
       setQuotaSaveError(
-        `Capacity for ${label} must be a whole number from 0 to ${MAX_ONLINE_CAPACITY}.`
+        `Online and walk-in capacity for ${label} must be whole numbers from 0 to ${MAX_ONLINE_CAPACITY}.`
       )
       return
     }
@@ -205,6 +220,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           test_label: label,
           max_online_capacity: capacity,
+          max_walkin_capacity: walkinCapacity,
           date: quotaDate,
         }),
       })
@@ -216,7 +232,7 @@ export default function AdminDashboard() {
         )
       }
       await fetchQuotas(quotaDate)
-      setQuotaSaved(`${label} online capacity saved.`)
+      setQuotaSaved(`${label} online and walk-in capacity saved.`)
     } catch (err) {
       setQuotaSaveError(
         err instanceof Error ? err.message : 'Failed to update the test capacity.'
@@ -649,7 +665,7 @@ export default function AdminDashboard() {
             aria-expanded={showQuotas}
           >
             <BarChart3 className="w-4 h-4" />
-            {showQuotas ? 'Hide Capacity' : 'Online Capacity'}
+            {showQuotas ? 'Hide Capacity' : 'Daily Capacity'}
           </button>
           <button
             onClick={() => setShowBlockDate(true)}
@@ -675,8 +691,8 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-2xl shadow-sm border border-line p-4 sm:p-5 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-base font-bold text-navy">Daily online capacity by test</h2>
-                <p className="text-xs text-muted mt-0.5">The maximum applies to every date. Pick a date to view that day&apos;s online bookings; walk-ins are counted separately and do not use these slots.</p>
+                <h2 className="text-base font-bold text-navy">Daily capacity by test</h2>
+                <p className="text-xs text-muted mt-0.5">Set the maximum online and walk-in slots for each test. The limits apply to every date. Pick a date to view that day&apos;s bookings.</p>
               </div>
               <div className="flex items-center gap-2">
                 <label htmlFor="quota-date" className="text-sm font-medium text-ink">View date</label>
@@ -716,29 +732,49 @@ export default function AdminDashboard() {
                 const walkins = quotaWalkins[t.label] ?? 0
                 const total = quotaTotals[t.label] ?? booked + walkins
                 const capacity = quotaCapacities[t.label] ?? 0
+                const walkinCapacity = quotaWalkinCapacities[t.label] ?? 0
                 const onlineAvailable =
                   quotaAvailable[t.label] ?? Math.max(0, capacity - booked)
+                const walkinAvailable =
+                  quotaWalkinAvailable[t.label] ??
+                  Math.max(0, walkinCapacity - walkins)
                 const pct = capacity > 0
                   ? Math.round((onlineAvailable / capacity) * 100)
                   : 0
+                const walkinPct = walkinCapacity > 0
+                  ? Math.round((walkinAvailable / walkinCapacity) * 100)
+                  : 0
                 const onlineFull = onlineAvailable <= 0
+                const walkinFull = walkinAvailable <= 0
+                const cardFull = onlineFull && walkinFull
                 const saving = quotaSaving === t.label
                 return (
-                  <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${onlineFull ? 'border-danger/30 bg-danger-surface/60' : 'border-line bg-white'}`}>
-                    <div className="flex items-center justify-between gap-2 text-sm">
+                  <div key={t.label} className={`p-3.5 rounded-xl border transition-shadow hover:shadow-md ${cardFull ? 'border-danger/30 bg-danger-surface/60' : 'border-line bg-white'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-sm">
                       <span className="font-semibold text-navy truncate" title={t.label}>{t.label}</span>
-                      {onlineFull ? (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
-                          No online slots
-                        </span>
-                      ) : (
-                        <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-soft text-brand border border-brand/20 tabular-nums">
-                          {onlineAvailable} online left
-                        </span>
-                      )}
+                      <span className="flex flex-wrap justify-end gap-1">
+                        {onlineFull ? (
+                          <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
+                            No online slots
+                          </span>
+                        ) : (
+                          <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-soft text-brand border border-brand/20 tabular-nums">
+                            {onlineAvailable} online left
+                          </span>
+                        )}
+                        {walkinFull ? (
+                          <span className="shrink-0 px-2 py-0.5 text-xs font-bold rounded-full bg-danger text-white">
+                            No walk-in slots
+                          </span>
+                        ) : (
+                          <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-warn-surface text-warn border border-warn/20 tabular-nums">
+                            {walkinAvailable} walk-in left
+                          </span>
+                        )}
+                      </span>
                     </div>
-                    <div className="mt-2 flex items-end gap-2">
-                      <label className="flex-1 min-w-0">
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="min-w-0">
                         <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">
                           Maximum online
                         </span>
@@ -759,25 +795,56 @@ export default function AdminDashboard() {
                           className="mt-1 w-full px-2.5 py-1.5 border border-line rounded-lg text-ink bg-white text-sm tabular-nums outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
                         />
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => void saveCapacity(t.label)}
-                        disabled={saving || quotaLoading}
-                        className="px-3 py-2 text-xs font-bold rounded-lg bg-brand text-white hover:bg-brand-dark transition-colors disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed"
-                      >
-                        {saving ? 'Saving…' : 'Save'}
-                      </button>
+                      <label className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                          Maximum walk-in
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={MAX_ONLINE_CAPACITY}
+                          step={1}
+                          inputMode="numeric"
+                          value={quotaWalkinDrafts[t.label] ?? ''}
+                          onChange={(e) => {
+                            const value = e.target.value
+                            setQuotaWalkinDrafts(prev => ({ ...prev, [t.label]: value }))
+                            setQuotaSaved('')
+                            setQuotaSaveError('')
+                          }}
+                          aria-label={`Maximum walk-in capacity for ${t.label}`}
+                          className="mt-1 w-full px-2.5 py-1.5 border border-line rounded-lg text-ink bg-white text-sm tabular-nums outline-none transition-all focus:border-brand focus:ring-2 focus:ring-brand/20"
+                        />
+                      </label>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => void saveCapacity(t.label)}
+                      disabled={saving || quotaLoading}
+                      className="mt-2 w-full px-3 py-2 text-xs font-bold rounded-lg bg-brand text-white hover:bg-brand-dark transition-colors disabled:bg-disabled disabled:text-disabled-text disabled:cursor-not-allowed"
+                    >
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
                     <div className="mt-1.5 text-xs text-muted tabular-nums">
-                      Online booked {booked} · Walk-ins {walkins} · Total {total}
+                      Online {booked}/{capacity} · Walk-in {walkins}/{walkinCapacity} · Total {total}
                     </div>
                     {capacity < booked && (
                       <p className="mt-1 text-[11px] font-semibold text-warn">
-                        Capacity is below current online bookings; no new slots are available.
+                        Online capacity is below current online bookings; no new online slots are available.
                       </p>
                     )}
-                    <div className="mt-2 h-2 rounded-full bg-line/60 overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-danger' : pct <= 25 ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+                    {walkinCapacity < walkins && (
+                      <p className="mt-1 text-[11px] font-semibold text-warn">
+                        Walk-in capacity is below current walk-ins; no new walk-in slots are available.
+                      </p>
+                    )}
+                    <div className="mt-2 space-y-1" aria-hidden="true">
+                      <div className="h-1.5 rounded-full bg-line/60 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${onlineFull ? 'bg-danger' : pct <= 25 ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="h-1.5 rounded-full bg-line/60 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${walkinFull ? 'bg-danger' : walkinPct <= 25 ? 'bg-warn' : 'bg-ok'}`} style={{ width: `${walkinPct}%` }} />
+                      </div>
                     </div>
                   </div>
                 )

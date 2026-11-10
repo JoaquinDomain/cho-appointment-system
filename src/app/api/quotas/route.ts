@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 
 // GET /api/quotas?date=YYYY-MM-DD, public. Only test counts/capacities,
 // no patient data. `counts` remains the online-only map for compatibility;
-// `capacities` and `available` are the admin-managed online values.
+// `capacities`/`available` are the admin-managed online values and
+// `walkinCapacities`/`walkinAvailable` are the walk-in values.
 export async function GET(request: Request) {
   const ip = getClientIp(request)
   const rl = checkRateLimit(`quotas:${ip}`, 60, 60 * 1000)
@@ -35,7 +36,9 @@ export async function GET(request: Request) {
         walkinCounts: snapshot.walkinCounts,
         totalCounts: snapshot.totalCounts,
         capacities: snapshot.capacities,
+        walkinCapacities: snapshot.walkinCapacities,
         available: snapshot.available,
+        walkinAvailable: snapshot.walkinAvailable,
         tests: snapshot.tests,
       },
       { headers: { 'Cache-Control': 'no-store' } }
